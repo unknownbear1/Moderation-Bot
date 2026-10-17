@@ -13,18 +13,26 @@ import unicodedata
 import uuid
 from datetime import timedelta
 from pathlib import Path
-from urllib.parse import parse_qsl, unquote, urlsplit
+from urllib.parse import parse_qsl, unquote, urljoin, urlsplit
 
 CHANNEL_ID = 1560149527984476180
 MOD_LOG_ID = 1560149552168837181
 OUTPUT_CHANNEL_ID = 1560525700908322917
 LIVE_LINKS_ONLY_CHANNEL_ID = 1560149527984476180
+TROLL_FLAG_CHANNEL_IDS = {CHANNEL_ID}
 
 SCAN_MINUTES = 10
 LIVE_LINKS_SCAN_MINUTES = 10
 POLICY_VERSION = 'local-v10-800-text-patterns'
-LIVE_LINKS_POLICY = 'live-links-only-v3-delete-fix'
+LIVE_LINKS_POLICY = 'live-links-only-v4-tiktok-resolution'
+TROLL_FLAG_POLICY = 'troll-review-v4-expanded-group-abuse'
+
 ALLOWED_ACCOUNT = 'unknownbear_'
+CAUSE_EXCEPTION_USERNAME = 'thatzionistgirl'
+CAUSE_EXCEPTION_USER_ID = int(
+    os.getenv('CAUSE_EXCEPTION_USER_ID', '0').strip() or '0'
+)
+CAUSE_EXCEPTION_POLICY = 'cause-announcement-v1'
 
 MAX_MEDIA_BYTES = 25 * 1024 * 1024
 MAX_VIDEO_SECONDS = 120
@@ -42,126 +50,126 @@ FEED_EXCLUDED_ROOTS = {
 }
 
 ADULT_DOMAINS = set("""
-    21sextury.com 3movs.com 4tube.com 5movs.com 9porn.com
-    abbywinters.com adultempire.com adultfriendfinder.com adultwork.com aebn.com
-    allanal.com allinternal.com allover30.com alohatube.com amateur.tv
-    amateurallure.com amateurporn.me analdin.com analonly.com ancensored.com
-    anysex.com ashemaletube.com asstr.org av01.tv avdbs.com
-    avgle.com avizoone.com avsox.com aznude.com babeher.com
-    babepedia.com babes.com babesandstars.com babesnetwork.com babestation.tv
-    badoinkvr.com bang.com bangbros.com bangbrosnetwork.com bdsmlr.com
-    beeg.com bellesa.co bellesaplus.co bigboobsalert.com bigtits.com
-    blacked.com blacksonblondes.com bongacams.com boobpedia.com boundhub.com
-    boyfriendtv.com boysfood.com bravoporn.com bravotube.net brazzers.com
-    bustybloom.com cam4.com cambay.tv cambro.tv camcontacts.com
-    camonster.com camplace.com camrabbit.com cams.com camshowdownload.com
-    camsoda.com camster.com camvault.xyz camversity.com camvideos.org
-    camwhores.tv camwhores.video celebjihad.com chan.sankakucomplex.com chaturbate.com
-    cherry.tv cherrypimps.com cherrypimpsnetwork.com chyoa.com clips4sale.com
-    cum4k.com czechav.com czechcasting.com czechstreets.com czechvideo.com
-    daftsex.com danbooru.donmai.us deeper.com desiporn.tube desitales2.com
-    desixnxx.com desixxx.in digitaldesire.com digitalplayground.com dirtyship.com
-    dorcel.com dorcelclub.com drporn.com drtuber.com drtuber.xxx
-    e621.net efappy.com efukt.com empflix.com empireamateurs.com
-    eporner.com erome.com eroticbeauty.com eroticmonkey.ch ersties.com
-    escortbabylon.net escortfish.ch evilangel.com extremetube.com exxxtrasmall.com
-    fakehub.com faketaxi.com fakku.net family.xxx fancentro.com
-    fansly.com fanvue.com fapality.com fapcat.com fapello.com
-    fapelloleaks.com fapgon.com fapguru.com faphouse.com fapnado.com
-    fapnation.com fapnut.com fapomania.com faproulette.co faproulette.com
-    fapster.xxx faptitans.com fapvid.com femdom-joi.com femdomcc.net
-    fetishnetwork.com fistingcentral.com fleshbot.com fling.com flirt4free.com
-    freeones.com frolicme.com fuckbook.com fullporn.xxx fullporner.com
-    fuq.com fux.com fuxxx.com gamelink.com gay0day.com
-    gayboystube.com gaydemon.com gayforit.eu gayfuror.com gaymaletube.com
-    gayporn.fm gayporno.fm gaysonic.com gaystream.pw gaysuperman.com
-    gaytube.com gelbooru.com goodporn.se goodporn.to gosexpod.com
-    gotporn.com hanime.tv hardsextube.com hclips.com hdhole.com
-    hdporn.net hdporn92.com hdpornmax.net hdpornt.com hdpornvideo.xxx
-    hdsex.org hdsex2.com hdtube.xxx hdtubemovies.com hdzog.com
-    heavy-r.com hentai-foundry.com hentai.io hentai.tv hentai2read.com
-    hentai4manga.com hentaibam.com hentaidude.com hentaiforce.net hentaifox.com
-    hentaigasm.com hentaihaven.xxx hentaihere.com hentaiheroes.com hentaiplay.net
-    hentaipros.com hentaipulse.com hentairead.com hentaisea.com hentaistream.com
-    hentaistream.tv hentaitube.online hentaiworld.tv hentaixd.com hentaixxx.me
-    hentaiz.org hentaizap.com hentaizilla.com hitomi.la hot-sex-tube.com
-    hotmovies.com hotmovs.com hotpornfile.org hotporntubes.com hqporner.com
-    hustler.com hustlerunlimited.com iafd.com imhentai.xxx imlive.com
-    indexxx.com iwantclips.com jav.guru javbus.com javdb.com
-    javhd.com javhub.net javlibrary.com javmix.tv javmost.com
-    javmost.to javseen.tv javsubindo.com javtiful.com javtrailers.com
-    jerkmate.com jizzbunker.com jizzhut.com jizzoncam.com jizzparade.com
-    jizzplanet.com joyourself.com justfor.fans justporno.tv justporno.xxx
-    keezmovies.com kindgirls.com kink.com kissjav.com leakedmodels.com
-    leakxxx.com legalporno.com lesbian8.com letmejerk.com lewdzone.com
-    literotica.com livejasmin.com liveprivates.com loyalfans.com lubed.com
-    lushstories.com lustery.com madthumbs.com manyvids.com mature.nl
-    matureporn.com maturesex.com maturetube.com maturetubeporn.com melonstube.com
-    metart.com milfmovs.com milfporn.tv milftube.com milfzr.com
-    mofos.com momsbangteens.com motherless.com mrskin.com mydirtyhobby.com
-    myfreecams.com myhentaicomics.com myhentaigallery.com mylf.com myreadingmanga.info
-    naked.com nakedgirls.xxx nakednews.com nastyporn.net naughtyamerica.com
-    naughtyamericalive.com naughtyblog.org netvideogirls.com newtumbl.com nhentai.net
-    niteflirt.com nubiles-porn.com nubiles.net nudevista.com nudevista.net
-    nudogram.com nudography.com nudostar.com nutaku.net nuvid.com
-    nuvid.xxx onlyfans.com orgasms.xxx passion-hd.com peekshows.com
-    penthouse.com perfectgonzo.com playboyplus.com porn.com porn00.org
-    porn2012.com porn300.com porn4days.net porn4real.com porn555.com
-    porn7.xxx porn87.com porn93.co pornbang.com pornbimbo.com
-    pornbiz.com pornblade.com pornbox.com pornbraze.com pornburst.xxx
-    porncoven.com porndig.com porndish.com porndoe.com porndude.com
-    pornerbros.com pornfd.com pornfidelity.com pornflip.com pornfuror.com
-    porngo.com pornhat.com pornhd.com pornhd3x.com pornheed.com
-    pornhits.com pornhive.tv pornhub.com pornhub.de pornhub.es
-    pornhub.fr pornhub.it pornhub.net pornhub.org pornhub.xxx
-    pornhubpremium.com pornhubpremium.org pornhubselect.com pornkai.com pornktube.com
-    pornl.com pornmd.com pornmd.xxx pornmega.com pornmz.com
-    pornogratis.xxx pornomovies.com pornon.xxx pornone.com pornotube.com
-    pornoxo.com pornoxo.xxx pornpics.com pornplus.com pornpros.com
-    pornrabbit.com pornrewind.com pornrox.com pornsharing.com pornsocket.com
-    pornsos.com pornstarbyface.com pornstarhub.com porntopic.com porntrex.com
-    porntry.com porntube.com pornve.com pornvibe.org pornwatchers.com
-    pornwex.tv pornwhite.com pornwild.to pornworld.com pornyd.com
-    pornzog.com povd.com punishbang.com puretaboo.com realitykings.com
-    realitykingsnetwork.com reallifecam.com reallifecam.to rec-tube.com recurbate.com
-    redgifs.com redtube.com redwap.com redwap.me rule34.paheal.net
-    rule34.us rule34.xxx rule34video.com runetki.com sakuralive.com
-    sankakucomplex.com screwbox.com seancody.com seehimfuck.com sex.com
-    sex.xxx sex3.com sex8.cc sexandsubmission.com sexart.com
-    sexemulator.com sexlikereal.com sexmex.xxx sexstories.com sextpanther.com
-    sextvx.com sexu.com sexuria.com sexvid.xxx sexvideos.xxx
-    sexvids.tv shemale6.com shemaletubevideos.com shesfreaky.com simonscans.com
-    skyprivate.com slayed.com slutload.com spankbang.com spankbanglive.com
-    spankingtube.com spankwire.com spicytranny.com spizoo.com streamate.com
-    stripchat.com suicidegirls.com sunporno.com superbe.com superporn.com
-    sweetheartvideo.com sxyprn.com tastyblacks.com teamskeet.com teenfidelity.com
-    thefappening.plus thefappening.pro thefappeningblog.com thegay.com thehun.net
-    theporndude.com thisvid.com thumbs.pro thumbzilla.com tigerram.com
-    tiny4k.com tnaflix.com tnaflix.xxx tsescorts.com tsumino.com
-    tube8.com tubegalore.com tubeporn.com tubepornclassic.com tubepornstars.com
-    tubepornup.com tubesafari.com tubsexer.com tubxporn.com tushy.com
-    twistys.com txxx.com upornia.com vixen.com vjav.com
-    voyeur-house.tv voyeurhit.com voyeurweb.com vporn.com vrbangers.com
-    vrporn.com wankoz.com wankzvr.com watchmygf.com watchporn.to
-    whoreshub.com wicked.com wickedpictures.com woodmancastingx.com worldsex.com
-    x-art.com x18r.com x3vid.com xanimeporn.com xart.com
-    xbabe.com xcafe.com xcams.com xempire.com xfantazy.com
-    xfree.com xfreehd.com xgaytube.com xhamster.com xhamster.desi
-    xhamster2.com xhamster3.com xhamsterlive.com xkeezmovies.com xlovecam.com
-    xmissy.nl xmom.me xnxx.com xnxx.es xnxx.in
-    xnxx.tv xnxx2.com xnxx3.com xnxx4.com xogogo.com
-    xozilla.com xpee.com xrares.com xrares.net xredtube.com
-    xshr.online xsporn.com xtapes.to xtits.com xtube.com
-    xvideos-cdn.com xvideos.com xvideos.es xvideos.in xvideos.red
-    xvideos2.com xvidzz.com xvirgins.com xxnx.com xxnx.tv
-    xxx.com xxx18hot.com xxxbit.com xxxbp.tv xxxbullet.com
-    xxxbunker.com xxxcollections.net xxxdan.com xxxfiles.com xxxmovies.xxx
-    xxxporn123.com xxxporno.cam xxxporno.tv xxxsexvideos.com xxxsexzoo.com
-    xxxshake.com xxxstash.com xxxstreams.eu xxxstreams.org xxxtik.com
-    xxxvideo.blog xxxvideo.one xxxvideor.com xxxymovies.com yespornplease.com
-    yobt.com yobt.tv youav.com youfreeporn.com youjizz.com
-    youporn.com youporngay.com youpornpremium.com yourporn.sexy yourporntube.com
-    yoursexyteens.com yuvutu.com zbporn.com zoggy.com zooxtaboo.com
+21sextury.com 3movs.com 4tube.com 5movs.com 9porn.com
+abbywinters.com adultempire.com adultfriendfinder.com adultwork.com aebn.com
+allanal.com allinternal.com allover30.com alohatube.com amateur.tv
+amateurallure.com amateurporn.me analdin.com analonly.com ancensored.com
+anysex.com ashemaletube.com asstr.org av01.tv avdbs.com
+avgle.com avizoone.com avsox.com aznude.com babeher.com
+babepedia.com babes.com babesandstars.com babesnetwork.com babestation.tv
+badoinkvr.com bang.com bangbros.com bangbrosnetwork.com bdsmlr.com
+beeg.com bellesa.co bellesaplus.co bigboobsalert.com bigtits.com
+blacked.com blacksonblondes.com bongacams.com boobpedia.com boundhub.com
+boyfriendtv.com boysfood.com bravoporn.com bravotube.net brazzers.com
+bustybloom.com cam4.com cambay.tv cambro.tv camcontacts.com
+camonster.com camplace.com camrabbit.com cams.com camshowdownload.com
+camsoda.com camster.com camvault.xyz camversity.com camvideos.org
+camwhores.tv camwhores.video celebjihad.com chan.sankakucomplex.com chaturbate.com
+cherry.tv cherrypimps.com cherrypimpsnetwork.com chyoa.com clips4sale.com
+cum4k.com czechav.com czechcasting.com czechstreets.com czechvideo.com
+daftsex.com danbooru.donmai.us deeper.com desiporn.tube desitales2.com
+desixnxx.com desixxx.in digitaldesire.com digitalplayground.com dirtyship.com
+dorcel.com dorcelclub.com drporn.com drtuber.com drtuber.xxx
+e621.net efappy.com efukt.com empflix.com empireamateurs.com
+eporner.com erome.com eroticbeauty.com eroticmonkey.ch ersties.com
+escortbabylon.net escortfish.ch evilangel.com extremetube.com exxxtrasmall.com
+fakehub.com faketaxi.com fakku.net family.xxx fancentro.com
+fansly.com fanvue.com fapality.com fapcat.com fapello.com
+fapelloleaks.com fapgon.com fapguru.com faphouse.com fapnado.com
+fapnation.com fapnut.com fapomania.com faproulette.co faproulette.com
+fapster.xxx faptitans.com fapvid.com femdom-joi.com femdomcc.net
+fetishnetwork.com fistingcentral.com fleshbot.com fling.com flirt4free.com
+freeones.com frolicme.com fuckbook.com fullporn.xxx fullporner.com
+fuq.com fux.com fuxxx.com gamelink.com gay0day.com
+gayboystube.com gaydemon.com gayforit.eu gayfuror.com gaymaletube.com
+gayporn.fm gayporno.fm gaysonic.com gaystream.pw gaysuperman.com
+gaytube.com gelbooru.com goodporn.se goodporn.to gosexpod.com
+gotporn.com hanime.tv hardsextube.com hclips.com hdhole.com
+hdporn.net hdporn92.com hdpornmax.net hdpornt.com hdpornvideo.xxx
+hdsex.org hdsex2.com hdtube.xxx hdtubemovies.com hdzog.com
+heavy-r.com hentai-foundry.com hentai.io hentai.tv hentai2read.com
+hentai4manga.com hentaibam.com hentaidude.com hentaiforce.net hentaifox.com
+hentaigasm.com hentaihaven.xxx hentaihere.com hentaiheroes.com hentaiplay.net
+hentaipros.com hentaipulse.com hentairead.com hentaisea.com hentaistream.com
+hentaistream.tv hentaitube.online hentaiworld.tv hentaixd.com hentaixxx.me
+hentaiz.org hentaizap.com hentaizilla.com hitomi.la hot-sex-tube.com
+hotmovies.com hotmovs.com hotpornfile.org hotporntubes.com hqporner.com
+hustler.com hustlerunlimited.com iafd.com imhentai.xxx imlive.com
+indexxx.com iwantclips.com jav.guru javbus.com javdb.com
+javhd.com javhub.net javlibrary.com javmix.tv javmost.com
+javmost.to javseen.tv javsubindo.com javtiful.com javtrailers.com
+jerkmate.com jizzbunker.com jizzhut.com jizzoncam.com jizzparade.com
+jizzplanet.com joyourself.com justfor.fans justporno.tv justporno.xxx
+keezmovies.com kindgirls.com kink.com kissjav.com leakedmodels.com
+leakxxx.com legalporno.com lesbian8.com letmejerk.com lewdzone.com
+literotica.com livejasmin.com liveprivates.com loyalfans.com lubed.com
+lushstories.com lustery.com madthumbs.com manyvids.com mature.nl
+matureporn.com maturesex.com maturetube.com maturetubeporn.com melonstube.com
+metart.com milfmovs.com milfporn.tv milftube.com milfzr.com
+mofos.com momsbangteens.com motherless.com mrskin.com mydirtyhobby.com
+myfreecams.com myhentaicomics.com myhentaigallery.com mylf.com myreadingmanga.info
+naked.com nakedgirls.xxx nakednews.com nastyporn.net naughtyamerica.com
+naughtyamericalive.com naughtyblog.org netvideogirls.com newtumbl.com nhentai.net
+niteflirt.com nubiles-porn.com nubiles.net nudevista.com nudevista.net
+nudogram.com nudography.com nudostar.com nutaku.net nuvid.com
+nuvid.xxx onlyfans.com orgasms.xxx passion-hd.com peekshows.com
+penthouse.com perfectgonzo.com playboyplus.com porn.com porn00.org
+porn2012.com porn300.com porn4days.net porn4real.com porn555.com
+porn7.xxx porn87.com porn93.co pornbang.com pornbimbo.com
+pornbiz.com pornblade.com pornbox.com pornbraze.com pornburst.xxx
+porncoven.com porndig.com porndish.com porndoe.com porndude.com
+pornerbros.com pornfd.com pornfidelity.com pornflip.com pornfuror.com
+porngo.com pornhat.com pornhd.com pornhd3x.com pornheed.com
+pornhits.com pornhive.tv pornhub.com pornhub.de pornhub.es
+pornhub.fr pornhub.it pornhub.net pornhub.org pornhub.xxx
+pornhubpremium.com pornhubpremium.org pornhubselect.com pornkai.com pornktube.com
+pornl.com pornmd.com pornmd.xxx pornmega.com pornmz.com
+pornogratis.xxx pornomovies.com pornon.xxx pornone.com pornotube.com
+pornoxo.com pornoxo.xxx pornpics.com pornplus.com pornpros.com
+pornrabbit.com pornrewind.com pornrox.com pornsharing.com pornsocket.com
+pornsos.com pornstarbyface.com pornstarhub.com porntopic.com porntrex.com
+porntry.com porntube.com pornve.com pornvibe.org pornwatchers.com
+pornwex.tv pornwhite.com pornwild.to pornworld.com pornyd.com
+pornzog.com povd.com punishbang.com puretaboo.com realitykings.com
+realitykingsnetwork.com reallifecam.com reallifecam.to rec-tube.com recurbate.com
+redgifs.com redtube.com redwap.com redwap.me rule34.paheal.net
+rule34.us rule34.xxx rule34video.com runetki.com sakuralive.com
+sankakucomplex.com screwbox.com seancody.com seehimfuck.com sex.com
+sex.xxx sex3.com sex8.cc sexandsubmission.com sexart.com
+sexemulator.com sexlikereal.com sexmex.xxx sexstories.com sextpanther.com
+sextvx.com sexu.com sexuria.com sexvid.xxx sexvideos.xxx
+sexvids.tv shemale6.com shemaletubevideos.com shesfreaky.com simonscans.com
+skyprivate.com slayed.com slutload.com spankbang.com spankbanglive.com
+spankingtube.com spankwire.com spicytranny.com spizoo.com streamate.com
+stripchat.com suicidegirls.com sunporno.com superbe.com superporn.com
+sweetheartvideo.com sxyprn.com tastyblacks.com teamskeet.com teenfidelity.com
+thefappening.plus thefappening.pro thefappeningblog.com thegay.com thehun.net
+theporndude.com thisvid.com thumbs.pro thumbzilla.com tigerram.com
+tiny4k.com tnaflix.com tnaflix.xxx tsescorts.com tsumino.com
+tube8.com tubegalore.com tubeporn.com tubepornclassic.com tubepornstars.com
+tubepornup.com tubesafari.com tubsexer.com tubxporn.com tushy.com
+twistys.com txxx.com upornia.com vixen.com vjav.com
+voyeur-house.tv voyeurhit.com voyeurweb.com vporn.com vrbangers.com
+vrporn.com wankoz.com wankzvr.com watchmygf.com watchporn.to
+whoreshub.com wicked.com wickedpictures.com woodmancastingx.com worldsex.com
+x-art.com x18r.com x3vid.com xanimeporn.com xart.com
+xbabe.com xcafe.com xcams.com xempire.com xfantazy.com
+xfree.com xfreehd.com xgaytube.com xhamster.com xhamster.desi
+xhamster2.com xhamster3.com xhamsterlive.com xkeezmovies.com xlovecam.com
+xmissy.nl xmom.me xnxx.com xnxx.es xnxx.in
+xnxx.tv xnxx2.com xnxx3.com xnxx4.com xogogo.com
+xozilla.com xpee.com xrares.com xrares.net xredtube.com
+xshr.online xsporn.com xtapes.to xtits.com xtube.com
+xvideos-cdn.com xvideos.com xvideos.es xvideos.in xvideos.red
+xvideos2.com xvidzz.com xvirgins.com xxnx.com xxnx.tv
+xxx.com xxx18hot.com xxxbit.com xxxbp.tv xxxbullet.com
+xxxbunker.com xxxcollections.net xxxdan.com xxxfiles.com xxxmovies.xxx
+xxxporn123.com xxxporno.cam xxxporno.tv xxxsexvideos.com xxxsexzoo.com
+xxxshake.com xxxstash.com xxxstreams.eu xxxstreams.org xxxtik.com
+xxxvideo.blog xxxvideo.one xxxvideor.com xxxymovies.com yespornplease.com
+yobt.com yobt.tv youav.com youfreeporn.com youjizz.com
+youporn.com youporngay.com youpornpremium.com yourporn.sexy yourporntube.com
+yoursexyteens.com yuvutu.com zbporn.com zoggy.com zooxtaboo.com
 """.split())
 
 SOCIAL_HOSTS = {
@@ -417,26 +425,6 @@ EXPLICIT_SERVICE_TYPES = (
     r'(?:private |personalized |custom )?nude photo trades?',
 )
 
-MEDIA_REQUEST_RULES = tuple(
-    re.compile(
-        rf'\b(?:{intent}) (?:please )?'
-        rf'(?:(?:a|an|the|some|any|more|your|my|his|her|our|their) )?'
-        rf'(?:{media})\b'
-    )
-    for intent in MEDIA_REQUEST_INTENTS
-    for media in EXPLICIT_MEDIA_TYPES
-)
-
-SEXUAL_SERVICE_RULES = tuple(
-    re.compile(
-        rf'\b(?:{intent}) '
-        rf'(?:(?:a|an|the|some|any|more|your|my|his|her|our|their) )?'
-        rf'(?:{service})\b'
-    )
-    for intent in SEXUAL_SERVICE_INTENTS
-    for service in EXPLICIT_SERVICE_TYPES
-)
-
 ADDITIONAL_MEDIA_INTENTS = (
     r'(?:where|how) can i (?:find|get|buy|download|watch)',
     r'(?:anybody|somebody|anyone here) (?:have|got|selling|sharing|trading)',
@@ -461,6 +449,26 @@ ADDITIONAL_SERVICE_INTENTS = (
     r'(?:message|dm|pm|contact)(?: me| us)? (?:to schedule|to arrange|to reserve|to join)',
     r'(?:sign up|register|subscribe) (?:for|to book|to join|to access)',
     r'(?:looking|hoping|trying) to (?:book|buy|arrange|schedule|join)',
+)
+
+MEDIA_REQUEST_RULES = tuple(
+    re.compile(
+        rf'\b(?:{intent}) (?:please )?'
+        rf'(?:(?:a|an|the|some|any|more|your|my|his|her|our|their) )?'
+        rf'(?:{media})\b'
+    )
+    for intent in MEDIA_REQUEST_INTENTS
+    for media in EXPLICIT_MEDIA_TYPES
+)
+
+SEXUAL_SERVICE_RULES = tuple(
+    re.compile(
+        rf'\b(?:{intent}) '
+        rf'(?:(?:a|an|the|some|any|more|your|my|his|her|our|their) )?'
+        rf'(?:{service})\b'
+    )
+    for intent in SEXUAL_SERVICE_INTENTS
+    for service in EXPLICIT_SERVICE_TYPES
 )
 
 ADDITIONAL_MEDIA_RULES = tuple(
@@ -498,7 +506,6 @@ HOST_PATTERN = re.compile(
     r'(?<![\w@-])(?:[a-z0-9](?:[a-z0-9-]{0,62})\.)+[a-z]{2,63}(?![\w-])',
     re.I,
 )
-
 URL_PATTERN = re.compile(r'https?://[^\s<>]+', re.I)
 
 LIVE_LINK_HOST_RULES = {
@@ -535,6 +542,152 @@ SECTION_URL_PATTERN = re.compile(
     re.I,
 )
 
+CAUSE_TOPIC_PATTERN = re.compile(
+    r'\b(?:charit(?:y|ies|able)|nonprofit|non-profit|not-for-profit|'
+    r'fundrais(?:er|ers|ing)|donat(?:e|es|ion|ions)|relief fund|'
+    r'volunteer(?:s|ing)?|community service|mutual aid|humanitarian|'
+    r'disaster relief|food bank|food drive|blood drive|awareness campaign|'
+    r'advocacy|petition|voter registration|campaign(?:s|ing)?|'
+    r'canvass(?:er|ers|ing)?|door knock(?:er|ers|ing)?|'
+    r'community event|charity event|benefit event|rally|rallies|'
+    r'peaceful protest|peaceful demonstration|support group|'
+    r'community outreach|public service|make liberty win)\b',
+    re.I,
+)
+
+CAUSE_ACTION_PATTERN = re.compile(
+    r'\b(?:for anyone interested|i am working with|i m working with|'
+    r'im working with|we are working with|we re working with|'
+    r'looking to hire|now hiring|hiring|recruiting|'
+    r'looking for volunteers|seeking volunteers|need volunteers|'
+    r'get paid|paid to|paid opportunities|paid positions|'
+    r'sign up|signup|register|registration|apply|application|'
+    r'join us|join the|help us|help the|support the|support our|'
+    r'donate|volunteer|participate|take action|get involved|'
+    r'more info|more information|learn more|details below|'
+    r'share this|spread the word|raising awareness|'
+    r'attend|come along|come out|everyone is welcome)\b',
+    re.I,
+)
+
+TIKTOK_SHARE_HOSTS = frozenset({
+    'tiktok.com', 'www.tiktok.com', 'm.tiktok.com',
+    'vm.tiktok.com', 'vt.tiktok.com',
+})
+TIKTOK_RESOLUTION_CACHE = {}
+
+TROLL_PHRASES = (
+    r'trump supporters (?:are|are in|belong to) (?:a |the )?cult',
+    r'fuck trump supporters',
+    r'i hate maga',
+    r'maga (?:are|is) nazis?',
+    r'trump supporters (?:are|are all) nazis?',
+    r'i hate trump',
+    r'fuck trump',
+    r'fuck millie',
+    r'i hate millie',
+    r'millie is (?:a |an )?(?:whore|slut|cam ?girl|bitch|cunt)',
+    r'nazis?',
+    r'(?:fuck|f\*ck|f\*\*k)\s+zionism',
+    r'screw\s+zionism',
+    r'i\s+hate\s+zionism',
+)
+
+TROLL_JEWISH_TARGET = r'(?:jews|jewish\s+(?:people|men|women|families|communities))'
+TROLL_ZIONIST_TARGET = r'(?:zionists?|zionism)'
+TROLL_GROUP_TARGET = rf'(?:{TROLL_JEWISH_TARGET}|{TROLL_ZIONIST_TARGET})'
+
+TROLL_EXPANDED_ABUSE = (
+    rf'(?:fuck|f\*ck|f\*\*k|screw)\s+(?:(?:all|the|those)\s+)?{TROLL_GROUP_TARGET}',
+    rf'i\s+(?:hate|despise|loathe)\s+(?:(?:all|the|those)\s+)?{TROLL_GROUP_TARGET}',
+    rf'{TROLL_GROUP_TARGET}\s+(?:are|is)\s+(?:(?:all|just|nothing\s+but)\s+)?'
+    r'(?:vermin|parasites|subhuman|scum|filth|a\s+disease|a\s+cancer)',
+    rf'{TROLL_GROUP_TARGET}\s+(?:are|is)\s+(?:all\s+)?'
+    r'(?:evil|disgusting|worthless|inferior)',
+    rf'(?:kill|murder|exterminate|gas|eradicate)\s+(?:(?:all|the|those)\s+)?{TROLL_GROUP_TARGET}',
+    rf'(?:wipe\s+out|round\s+up|get\s+rid\s+of)\s+(?:(?:all|the|those)\s+)?{TROLL_GROUP_TARGET}',
+    rf'{TROLL_GROUP_TARGET}\s+(?:should|must|deserve\s+to)\s+(?:all\s+)?'
+    r'(?:die|be\s+killed|be\s+exterminated|be\s+deported|be\s+expelled)',
+    rf'(?:death\s+to|no\s+rights\s+for)\s+(?:the\s+)?{TROLL_GROUP_TARGET}',
+    rf'(?:ban|expel|deport)\s+(?:all\s+)?{TROLL_JEWISH_TARGET}',
+    rf'(?:all\s+)?{TROLL_JEWISH_TARGET}\s+(?:are\s+)?'
+    r'(?:greedy|money\s+hungry|born\s+liars|inherently\s+evil)',
+    rf'(?:the\s+)?{TROLL_JEWISH_TARGET}\s+(?:secretly\s+)?'
+    r'(?:control|own|run)\s+(?:all\s+)?(?:the\s+)?'
+    r'(?:world|banks|banking\s+system|media|governments?)',
+    rf'(?:all\s+)?{TROLL_JEWISH_TARGET}\s+(?:are\s+)?'
+    r'(?:responsible|to\s+blame)\s+for\s+(?:all\s+)?'
+    r'(?:our\s+problems|the\s+world[\x27’]s\s+problems|every\s+war)',
+    r'k[i1]kes?',
+)
+
+TROLL_PEOPLE_TARGET = (
+    r'(?:(?:(?:all|the|those|these)\s+){0,2}'
+    r'(?:jews|jewish\s+(?:people|men|women|families|communities)|zionists))'
+)
+
+TROLL_ADDITIONAL_ABUSE = (
+    rf'(?:i|we)\s+(?:really\s+|absolutely\s+)?(?:hate|despise|loathe)\s+'
+    rf'(?:(?:all|the|those)\s+)?{TROLL_GROUP_TARGET}',
+    rf'{TROLL_PEOPLE_TARGET}\s+(?:are|are\s+all|are\s+just|are\s+nothing\s+but)\s+'
+    r'(?:rats|cockroaches|animals|pigs|trash|garbage|human\s+garbage|'
+    r'degenerates|a\s+plague|a\s+virus|a\s+scourge)',
+    rf'{TROLL_PEOPLE_TARGET}\s+(?:do\s+not|don[\x27’]t)\s+'
+    r'(?:deserve\s+(?:rights|to\s+live|to\s+exist)|belong\s+here)',
+    rf'(?:i|we)\s+(?:hope|wish)\s+{TROLL_PEOPLE_TARGET}\s+'
+    r'(?:(?:would|will|all)\s+){0,2}(?:die|disappear|get\s+killed|get\s+deported)',
+    rf'{TROLL_PEOPLE_TARGET}\s+(?:should|must|need\s+to)\s+(?:all\s+)?'
+    r'(?:be\s+removed|be\s+eliminated|be\s+wiped\s+out|leave\s+the\s+country|'
+    r'be\s+locked\s+up|be\s+sent\s+to\s+camps)',
+    rf'(?:shoot|hang|lynch|slaughter|burn)\s+{TROLL_PEOPLE_TARGET}',
+    rf'(?:drive|kick|force)\s+{TROLL_PEOPLE_TARGET}\s+out',
+    rf'{TROLL_PEOPLE_TARGET}\s+(?:are\s+)?not\s+welcome\s+(?:here|anywhere)',
+    rf'(?:keep|ban)\s+{TROLL_PEOPLE_TARGET}\s+(?:out|from\s+our\s+(?:country|schools|neighborhoods))',
+    r'(?:no|fewer)\s+(?:jews|jewish\s+people)\s+(?:allowed|wanted|welcome)',
+    rf'(?:all\s+)?{TROLL_JEWISH_TARGET}\s+(?:are|are\s+all)\s+'
+    r'(?:thieves|liars|criminals|traitors|cheats|con\s+artists)',
+    rf'(?:the\s+)?{TROLL_JEWISH_TARGET}\s+(?:secretly\s+)?'
+    r'(?:control|own|run)\s+(?:all\s+)?(?:the\s+)?'
+    r'(?:press|news|politicians|politics|hollywood|economy|financial\s+system)',
+    rf'(?:all\s+)?{TROLL_JEWISH_TARGET}\s+(?:are\s+)?'
+    r'(?:responsible|to\s+blame)\s+for\s+(?:all\s+)?'
+    r'(?:wars|our\s+suffering|society[\x27’]s\s+problems|the\s+world[\x27’]s\s+problems)',
+    r'(?:jewish|jew)\s+(?:vermin|parasites|scum|filth)',
+    r'(?:fuck|f\*ck|f\*\*k)\s+(?:all\s+)?(?:of\s+)?(?:the\s+)?zionists?',
+)
+
+TROLL_PHRASES += TROLL_EXPANDED_ABUSE + TROLL_ADDITIONAL_ABUSE
+TROLL_PATTERNS = tuple(
+    re.compile(r'\b' + pattern + r'\b', re.I)
+    for pattern in TROLL_PHRASES
+)
+
+TROLL_ATTRIBUTION = re.compile(
+    r'(?:\b(?:he|she|they|someone|somebody|people|the troll|a troll|that person|'
+    r'the commenter|a commenter|the user|a user|(?!(?:i|we)\b)[\w.@-]+)\s+'
+    r'(?:(?:just|literally|actually|was|were|is|keeps|kept)\s+){0,2}'
+    r'(?:said|says|saying|wrote|writes|writing|posted|posts|posting|commented|'
+    r'commenting|called|calling|claimed|claiming|yelled|shouted|replied|told me)'
+    r'|\b(?:i was told|i was called|we were called|the quote was|the message reads|'
+    r'the comment reads|the screenshot says|the screenshot shows|they called us))'
+    r'\s*(?:that\s+)?(?:["“‘:,\-]\s*)*$',
+    re.I,
+)
+
+TROLL_DISCOURAGEMENT = re.compile(
+    r'\b(?:do not say|don[’\x27]t say|stop saying|please stop saying|'
+    r'please don[’\x27]t say|it is wrong to say|it[’\x27]s wrong to say)'
+    r'\s*["“‘:]*\s*$',
+    re.I,
+)
+
+TROLL_ENDORSEMENT = re.compile(
+    r'\b(?:i agree|i agree with (?:him|her|them|that)|i think so too|'
+    r'they[’\x27]re right|he[’\x27]s right|she[’\x27]s right|'
+    r'that[’\x27]s true|that is true|i feel the same)\b',
+    re.I,
+)
+
 
 def normalize(text):
     text = unicodedata.normalize('NFKC', text).casefold()
@@ -544,10 +697,9 @@ def normalize(text):
 def allowed_account_url(url):
     try:
         parsed = urlsplit(url)
-        host = (parsed.hostname or '').lower().rstrip('.')
         segments = unquote(parsed.path).strip('/').split('/')
         return (
-            host in SOCIAL_HOSTS
+            (parsed.hostname or '').lower().rstrip('.') in SOCIAL_HOSTS
             and bool(segments)
             and segments[0].lstrip('@').casefold() == ALLOWED_ACCOUNT
         )
@@ -556,8 +708,9 @@ def allowed_account_url(url):
 
 
 def blocked_domain(text, domain_lookup=None):
-    text = normalize(text)
-    text = re.sub(r'\s*(?:\[\.\]|\(\.\)|\{\.\})\s*', '.', text)
+    text = re.sub(
+        r'\s*(?:\[\.\]|\(\.\)|\{\.\})\s*', '.', normalize(text)
+    )
     for candidate in HOST_PATTERN.findall(text):
         host = candidate.lower().rstrip('.')
         if (
@@ -611,10 +764,7 @@ def section_link_candidates(message):
     seen = set()
     for text in texts:
         text = unicodedata.normalize('NFKC', text)
-        text = ''.join(
-            c for c in text
-            if unicodedata.category(c) != 'Cf'
-        )
+        text = ''.join(c for c in text if unicodedata.category(c) != 'Cf')
         text = re.sub(r'\s*(?:\[\.\]|\(\.\)|\{\.\})\s*', '.', text)
         for match in SECTION_URL_PATTERN.finditer(text):
             candidate = match.group().rstrip("'\"`.,;:!?)]}")
@@ -638,10 +788,9 @@ def section_repost_body(message):
         and re.search(r'(?im)^Comments:\s*', content)
     ):
         return content
-    links = section_link_candidates(message)
     comments = SECTION_URL_PATTERN.sub('', content).strip()
     return (
-        '\n'.join(links)
+        '\n'.join(section_link_candidates(message))
         + f'\nPosted: <@{message.author.id}>\nComments:\n'
         + (comments or 'No comments.')
     )
@@ -672,15 +821,195 @@ def section_live_link_allowed(candidate):
             return False
         if any(
             key.casefold() not in LIVE_LINK_SAFE_QUERY_KEYS
-            for key, value in parse_qsl(
-                parsed.query,
-                keep_blank_values=True,
-            )
+            for key, value in parse_qsl(parsed.query, keep_blank_values=True)
         ):
             return False
         return True
     except (ValueError, UnicodeError):
         return False
+
+
+def tiktok_link_kind(candidate):
+    try:
+        parsed = urlsplit(
+            candidate if '://' in candidate else 'https://' + candidate
+        )
+        host = (parsed.hostname or '').lower().rstrip('.')
+        if host not in TIKTOK_SHARE_HOSTS:
+            return 'other'
+        if parsed.scheme.lower() not in {'http', 'https'}:
+            return 'reject'
+        if parsed.username is not None or parsed.password is not None:
+            return 'reject'
+        if parsed.port not in (
+            None, 80 if parsed.scheme.lower() == 'http' else 443
+        ):
+            return 'reject'
+        path = unquote(parsed.path)
+        if re.fullmatch(r'/@[A-Za-z0-9._]{1,24}/live/?', path):
+            return 'live'
+        if re.fullmatch(r'/(?:share/live|live/share)/[0-9]+/?', path):
+            return 'live'
+        if re.fullmatch(
+            r'/@[A-Za-z0-9._]{1,24}/(?:video|photo)/[0-9]+/?', path
+        ):
+            return 'reject'
+        if re.fullmatch(r'/share/(?:video|photo)/[0-9]+/?', path):
+            return 'reject'
+        if (
+            host in {'vm.tiktok.com', 'vt.tiktok.com'}
+            or re.fullmatch(r'/t/[^/]+/?', path)
+        ):
+            return 'short'
+        return 'unknown'
+    except (ValueError, UnicodeError):
+        return 'reject'
+
+
+async def resolve_tiktok_share(candidate):
+    import aiohttp
+
+    kind = tiktok_link_kind(candidate)
+    if kind != 'short':
+        return kind
+    cached = TIKTOK_RESOLUTION_CACHE.get(candidate)
+    if cached and cached[0] > time.monotonic():
+        return cached[1]
+    current = candidate if '://' in candidate else 'https://' + candidate
+    result = 'unknown'
+    try:
+        async with asyncio.timeout(15):
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=6),
+                cookie_jar=aiohttp.DummyCookieJar(),
+                headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html'},
+                trust_env=False,
+            ) as session:
+                visited = set()
+                for _ in range(6):
+                    if current in visited:
+                        break
+                    visited.add(current)
+                    parsed = urlsplit(current)
+                    host = (parsed.hostname or '').lower().rstrip('.')
+                    if (
+                        host not in TIKTOK_SHARE_HOSTS
+                        or parsed.scheme.lower() not in {'http', 'https'}
+                        or parsed.username is not None
+                        or parsed.password is not None
+                        or parsed.port not in (
+                            None, 80 if parsed.scheme == 'http' else 443
+                        )
+                    ):
+                        break
+                    current_kind = tiktok_link_kind(current)
+                    if current_kind in {'live', 'reject'}:
+                        result = current_kind
+                        break
+                    async with session.get(
+                        current, allow_redirects=False
+                    ) as response:
+                        if response.status in {301, 302, 303, 307, 308}:
+                            location = response.headers.get('Location')
+                            if not location:
+                                break
+                            destination = urljoin(str(response.url), location)
+                        else:
+                            break
+                    destination_kind = tiktok_link_kind(destination)
+                    if destination_kind in {'live', 'reject'}:
+                        result = destination_kind
+                        break
+                    if destination_kind == 'other':
+                        break
+                    current = destination
+    except (aiohttp.ClientError, TimeoutError, ValueError, UnicodeError):
+        logger.warning(
+            'TikTok share could not be resolved; leaving pending for retry'
+        )
+    if len(TIKTOK_RESOLUTION_CACHE) >= 2048:
+        TIKTOK_RESOLUTION_CACHE.clear()
+    TIKTOK_RESOLUTION_CACHE[candidate] = (
+        time.monotonic() + (3600 if result != 'unknown' else 60), result
+    )
+    return result
+
+
+async def section_link_allowed_resolved(candidate):
+    kind = tiktok_link_kind(candidate)
+    if kind == 'other':
+        return section_live_link_allowed(candidate)
+    if kind == 'short':
+        kind = await resolve_tiktok_share(candidate)
+    if kind == 'live':
+        return True
+    if kind == 'reject':
+        return False
+    return None
+
+
+def is_cause_announcement(message):
+    author = message.author
+    if getattr(author, 'bot', False):
+        return False
+    if CAUSE_EXCEPTION_USER_ID:
+        if author.id != CAUSE_EXCEPTION_USER_ID:
+            return False
+    elif str(getattr(author, 'name', '')).casefold() != CAUSE_EXCEPTION_USERNAME:
+        return False
+    content = URL_PATTERN.sub(' ', message.content or '')
+    content = normalize(content).replace('’', "'")
+    content = re.sub(r"['`]", ' ', content)
+    content = re.sub(r'\s+', ' ', content).strip()
+    return bool(
+        len(re.findall(r'\b[a-z]{2,}\b', content)) >= 10
+        and section_link_candidates(message)
+        and CAUSE_TOPIC_PATTERN.search(content)
+        and CAUSE_ACTION_PATTERN.search(content)
+    )
+
+
+def troll_comment_findings(content):
+    text = unicodedata.normalize('NFKC', content or '')
+    text = ''.join(c for c in text if unicodedata.category(c) != 'Cf')
+    matches = sorted(
+        (m for pattern in TROLL_PATTERNS for m in pattern.finditer(text)),
+        key=lambda m: (m.start(), -(m.end() - m.start())),
+    )
+    findings = []
+    covered = -1
+    for match in matches:
+        if match.end() <= covered:
+            continue
+        covered = match.end()
+        start = max(
+            text.rfind('\n', 0, match.start()),
+            text.rfind('!', 0, match.start()),
+            text.rfind('?', 0, match.start()),
+            text.rfind(';', 0, match.start()),
+        ) + 1
+        before = text[start:match.start()][-180:]
+        after = text[match.end():].split('\n', 1)[0][:160]
+        attributed = bool(
+            TROLL_ATTRIBUTION.search(before)
+            or TROLL_DISCOURAGEMENT.search(before)
+        )
+        endorsed = bool(TROLL_ENDORSEMENT.search(after))
+        if attributed and not endorsed:
+            continue
+        quoted = before.rstrip().endswith(('"', '“', '‘'))
+        blockquote = text[start:match.start()].lstrip().startswith('>')
+        ambiguous = (
+            quoted or blockquote
+            or match.group().lower() in {'nazi', 'nazis'}
+        )
+        label = (
+            'Possible endorsement; review context' if endorsed else
+            'Ambiguous mention; review context' if ambiguous else
+            'Possible direct statement; review context'
+        )
+        findings.append((match.group(), label))
+    return findings
 
 
 def media_worker(source):
@@ -721,10 +1050,7 @@ def media_worker(source):
                 'ffprobe', '-v', 'error', '-show_entries',
                 'format=duration', '-of', 'json', str(source),
             ],
-            capture_output=True,
-            text=True,
-            timeout=20,
-            check=True,
+            capture_output=True, text=True, timeout=20, check=True,
         )
         duration = float(json.loads(probe.stdout)['format']['duration'])
         if not 0 < duration <= MAX_VIDEO_SECONDS:
@@ -844,8 +1170,7 @@ class Moderator(discord.Client):
 
     def setting(self, key, default):
         row = self.db.execute(
-            'SELECT value FROM settings_v3 WHERE key=?',
-            (key,),
+            'SELECT value FROM settings_v3 WHERE key=?', (key,)
         ).fetchone()
         return row[0] if row else default
 
@@ -858,13 +1183,11 @@ class Moderator(discord.Client):
 
     def enqueue(self, message_id, edited=False):
         self.db.execute(
-            'INSERT OR IGNORE INTO jobs_v3(id) VALUES (?)',
-            (message_id,),
+            'INSERT OR IGNORE INTO jobs_v3(id) VALUES (?)', (message_id,)
         )
         if edited:
             self.db.execute(
-                'UPDATE jobs_v3 SET due=0 WHERE id=?',
-                (message_id,),
+                'UPDATE jobs_v3 SET due=0 WHERE id=?', (message_id,)
             )
         self.db.commit()
 
@@ -875,12 +1198,8 @@ class Moderator(discord.Client):
         logger.info(
             'Connected as %s | NSFW channel=%s | live-link channel=%s '
             '| log=%s | output=%s | text patterns=%s',
-            self.user,
-            CHANNEL_ID,
-            LIVE_LINKS_ONLY_CHANNEL_ID,
-            MOD_LOG_ID,
-            OUTPUT_CHANNEL_ID,
-            len(TEXT_PATTERNS),
+            self.user, CHANNEL_ID, LIVE_LINKS_ONLY_CHANNEL_ID,
+            MOD_LOG_ID, OUTPUT_CHANNEL_ID, len(TEXT_PATTERNS),
         )
 
     async def on_message(self, message):
@@ -894,8 +1213,7 @@ class Moderator(discord.Client):
     async def on_raw_message_delete(self, payload):
         if payload.channel_id == CHANNEL_ID:
             self.db.execute(
-                'DELETE FROM jobs_v3 WHERE id=?',
-                (payload.message_id,),
+                'DELETE FROM jobs_v3 WHERE id=?', (payload.message_id,)
             )
             self.db.commit()
 
@@ -942,13 +1260,11 @@ class Moderator(discord.Client):
             self.worker = worker
             try:
                 output, _ = await asyncio.wait_for(
-                    worker.communicate(),
-                    timeout=180,
+                    worker.communicate(), timeout=180
                 )
-                lines = output.decode(errors='replace').splitlines()
                 results = [
                     line[12:]
-                    for line in lines
+                    for line in output.decode(errors='replace').splitlines()
                     if line.startswith('SCAN_RESULT=')
                 ]
                 if worker.returncode != 0 or not results:
@@ -998,10 +1314,9 @@ class Moderator(discord.Client):
         ):
             return False
         for index in range(len(labels) - 1):
-            suffix = '.'.join(labels[index:])
             if self.db.execute(
                 'SELECT 1 FROM adult_feed_v7 WHERE domain=?',
-                (suffix,),
+                ('.'.join(labels[index:]),),
             ).fetchone():
                 return True
         return False
@@ -1014,8 +1329,9 @@ class Moderator(discord.Client):
             return
         self.set_setting('feed_next_attempt', now + 3600)
         try:
-            timeout = aiohttp.ClientTimeout(total=30)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=30)
+            ) as session:
                 async with session.get(ADULT_FEED_URL) as response:
                     response.raise_for_status()
                     chunks = []
@@ -1051,8 +1367,7 @@ class Moderator(discord.Client):
 
     async def inspect(self, message):
         reason = text_violation(
-            self.message_text(message),
-            self.feed_blocked_domain,
+            self.message_text(message), self.feed_blocked_domain
         )
         if reason:
             return reason, []
@@ -1104,21 +1419,15 @@ class Moderator(discord.Client):
             self.db.execute(
                 'INSERT INTO actions_v5 VALUES (?,?,?,?,?,?)',
                 (
-                    case_id,
-                    message.id,
-                    digest,
-                    json.dumps(report),
-                    'planned',
-                    time.time(),
+                    case_id, message.id, digest,
+                    json.dumps(report), 'planned', time.time(),
                 ),
             )
             self.record_event(
                 case_id,
                 'before',
                 self.report_body(
-                    report,
-                    'BEFORE',
-                    'Deletion planned; not yet confirmed.',
+                    report, 'BEFORE', 'Deletion planned; not yet confirmed.'
                 ),
             )
         return case_id
@@ -1145,8 +1454,7 @@ class Moderator(discord.Client):
 
     def complete_action(self, case_id, state, status):
         row = self.db.execute(
-            'SELECT report FROM actions_v5 WHERE case_id=?',
-            (case_id,),
+            'SELECT report FROM actions_v5 WHERE case_id=?', (case_id,)
         ).fetchone()
         if not row:
             return
@@ -1157,9 +1465,7 @@ class Moderator(discord.Client):
                 (state, time.time(), case_id),
             )
             self.record_event(
-                case_id,
-                state,
-                self.report_body(report, 'AFTER', status),
+                case_id, state, self.report_body(report, 'AFTER', status)
             )
             if state == 'confirmed':
                 self.record_event(
@@ -1183,8 +1489,7 @@ class Moderator(discord.Client):
             latest = await channel.fetch_message(message_id)
         except discord.NotFound:
             self.complete_action(
-                case_id,
-                'missing',
+                case_id, 'missing',
                 'Message is absent. Who removed it cannot be confirmed; '
                 'a prior bot deletion may have succeeded before interruption.',
             )
@@ -1193,8 +1498,7 @@ class Moderator(discord.Client):
             return
         if self.fingerprint(latest) != digest:
             self.complete_action(
-                case_id,
-                'changed',
+                case_id, 'changed',
                 'Deletion cancelled because the message or policy changed; '
                 'queued for a fresh scan.',
             )
@@ -1210,15 +1514,13 @@ class Moderator(discord.Client):
             await latest.delete()
         except discord.NotFound:
             self.complete_action(
-                case_id,
-                'missing',
+                case_id, 'missing',
                 'Message disappeared before deletion was acknowledged; deleter unconfirmed.',
             )
         except Exception as exc:
             logger.exception(
                 'NSFW deletion failed | case=%s | message=%s',
-                case_id,
-                message_id,
+                case_id, message_id,
             )
             with self.db:
                 self.db.execute(
@@ -1229,8 +1531,7 @@ class Moderator(discord.Client):
                     case_id,
                     'failed',
                     self.report_body(
-                        report,
-                        'AFTER',
+                        report, 'AFTER',
                         f'Deletion not confirmed: {type(exc).__name__}: {exc}; '
                         'retry scheduled.',
                     ),
@@ -1243,14 +1544,12 @@ class Moderator(discord.Client):
             return
         else:
             self.complete_action(
-                case_id,
-                'confirmed',
+                case_id, 'confirmed',
                 'Discord acknowledged successful deletion by this bot.',
             )
             logger.info(
                 'NSFW message deleted | case=%s | message=%s',
-                case_id,
-                message_id,
+                case_id, message_id,
             )
         self.finish(message_id)
         await self.flush_logs(case_id)
@@ -1258,7 +1557,7 @@ class Moderator(discord.Client):
     async def recover_actions(self, channel):
         rows = self.db.execute(
             "SELECT case_id FROM actions_v5 WHERE state IN ('planned','deleting','retry') "
-            'ORDER BY updated LIMIT 100',
+            'ORDER BY updated LIMIT 100'
         ).fetchall()
         for (case_id,) in rows:
             try:
@@ -1283,8 +1582,7 @@ class Moderator(discord.Client):
                 return
             digest = self.fingerprint(message)
             row = self.db.execute(
-                'SELECT digest FROM results_v3 WHERE id=?',
-                (message_id,),
+                'SELECT digest FROM results_v3 WHERE id=?', (message_id,)
             ).fetchone()
             if row and row[0] == digest:
                 self.finish(message_id)
@@ -1296,8 +1594,7 @@ class Moderator(discord.Client):
             elif limitations:
                 logger.warning(
                     'Incomplete scan for %s: %s',
-                    message_id,
-                    '; '.join(set(limitations)),
+                    message_id, '; '.join(set(limitations)),
                 )
                 self.db.execute(
                     'UPDATE jobs_v3 SET due=? WHERE id=?',
@@ -1321,10 +1618,7 @@ class Moderator(discord.Client):
                 )
 
     def finish(self, message_id):
-        self.db.execute(
-            'DELETE FROM jobs_v3 WHERE id=?',
-            (message_id,),
-        )
+        self.db.execute('DELETE FROM jobs_v3 WHERE id=?', (message_id,))
         self.db.commit()
 
     async def flush_logs(self, case_id=None):
@@ -1334,11 +1628,10 @@ class Moderator(discord.Client):
             query += ' AND case_id=?'
             params = (case_id,)
         rows = self.db.execute(
-            query + ' ORDER BY sequence LIMIT 100',
-            params,
+            query + ' ORDER BY sequence LIMIT 100', params
         ).fetchall()
         legacy = [] if case_id else self.db.execute(
-            'SELECT id,body FROM logs_v3 ORDER BY id LIMIT 100',
+            'SELECT id,body FROM logs_v3 ORDER BY id LIMIT 100'
         ).fetchall()
         for sequence, body, stage in rows:
             try:
@@ -1357,14 +1650,12 @@ class Moderator(discord.Client):
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
                 self.db.execute(
-                    'UPDATE events_v5 SET sent=1 WHERE sequence=?',
-                    (sequence,),
+                    'UPDATE events_v5 SET sent=1 WHERE sequence=?', (sequence,)
                 )
                 self.db.commit()
             except Exception:
                 logger.exception(
-                    'Moderator report retained | sequence=%s',
-                    sequence,
+                    'Moderator report retained | sequence=%s', sequence
                 )
         for message_id, body in legacy:
             try:
@@ -1378,14 +1669,12 @@ class Moderator(discord.Client):
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
                 self.db.execute(
-                    'DELETE FROM logs_v3 WHERE id=?',
-                    (message_id,),
+                    'DELETE FROM logs_v3 WHERE id=?', (message_id,)
                 )
                 self.db.commit()
             except Exception:
                 logger.exception(
-                    'Legacy moderator report retained | message=%s',
-                    message_id,
+                    'Legacy moderator report retained | message=%s', message_id
                 )
 
     async def discover(self, channel):
@@ -1394,9 +1683,7 @@ class Moderator(discord.Client):
         )
         cursor = int(self.setting('cursor', str(initial)))
         async for message in channel.history(
-            limit=None,
-            after=discord.Object(id=cursor),
-            oldest_first=True,
+            limit=None, after=discord.Object(id=cursor), oldest_first=True
         ):
             self.enqueue(message.id)
             self.set_setting('cursor', message.id)
@@ -1446,7 +1733,9 @@ class Moderator(discord.Client):
             for (message_id,) in jobs:
                 async with self.message_lock:
                     await self.handle(channel, message_id)
-            logger.info('NSFW scan completed | queued messages processed=%s', len(jobs))
+            logger.info(
+                'NSFW scan completed | queued messages processed=%s', len(jobs)
+            )
         except Exception:
             logger.exception('NSFW scan cycle failed')
         await self.flush_logs()
@@ -1556,8 +1845,7 @@ class LiveLinksOnlyGuard:
 
     def finish(self, message_id):
         self.db.execute(
-            'DELETE FROM section_jobs_v1 WHERE message_id=?',
-            (message_id,),
+            'DELETE FROM section_jobs_v1 WHERE message_id=?', (message_id,)
         )
         self.db.commit()
 
@@ -1569,8 +1857,7 @@ class LiveLinksOnlyGuard:
             )
             self.event(case_id, state, report, status)
             self.db.execute(
-                'DELETE FROM section_jobs_v1 WHERE message_id=?',
-                (message_id,),
+                'DELETE FROM section_jobs_v1 WHERE message_id=?', (message_id,)
             )
 
     async def flush(self, case_id=None):
@@ -1580,8 +1867,7 @@ class LiveLinksOnlyGuard:
             sql += ' AND case_id=?'
             args = (case_id,)
         rows = self.db.execute(
-            sql + ' ORDER BY sequence LIMIT 100',
-            args,
+            sql + ' ORDER BY sequence LIMIT 100', args
         ).fetchall()
         for sequence, body, stage in rows:
             try:
@@ -1626,14 +1912,12 @@ class LiveLinksOnlyGuard:
                 if stage == 'output_confirmed':
                     logger.info(
                         'Live-link output delivered | channel=%s | sequence=%s',
-                        target_id,
-                        sequence,
+                        target_id, sequence,
                     )
             except Exception:
                 logger.exception(
                     'Live-link report/output retained | sequence=%s | stage=%s',
-                    sequence,
-                    stage,
+                    sequence, stage,
                 )
 
     async def process(self, channel, message_id):
@@ -1647,10 +1931,7 @@ class LiveLinksOnlyGuard:
         except discord.NotFound:
             if active:
                 self.terminal(
-                    active[0],
-                    message_id,
-                    'missing',
-                    json.loads(active[2]),
+                    active[0], message_id, 'missing', json.loads(active[2]),
                     'Message is absent; who removed it is unconfirmed.',
                 )
                 await self.flush(active[0])
@@ -1663,10 +1944,7 @@ class LiveLinksOnlyGuard:
         digest = self.digest(message)
         if active and active[1] != digest:
             self.terminal(
-                active[0],
-                message_id,
-                'changed',
-                json.loads(active[2]),
+                active[0], message_id, 'changed', json.loads(active[2]),
                 'Deletion cancelled because the message or policy changed; '
                 'fresh scan queued.',
             )
@@ -1685,11 +1963,24 @@ class LiveLinksOnlyGuard:
                 self.finish(message_id)
                 return
             links = section_link_candidates(message)
-            rejected = [
-                link
-                for link in links
-                if not section_live_link_allowed(link)
-            ]
+            rejected = []
+            unresolved = False
+            for link in links:
+                decision = await section_link_allowed_resolved(link)
+                if decision is False:
+                    rejected.append(link)
+                elif decision is None:
+                    unresolved = True
+            if unresolved and not rejected:
+                self.db.execute(
+                    'UPDATE section_jobs_v1 SET due=? WHERE message_id=?',
+                    (time.time() + 600, message_id),
+                )
+                self.db.commit()
+                logger.warning(
+                    'TikTok share pending resolution | message=%s', message_id
+                )
+                return
             if not rejected:
                 with self.db:
                     self.db.execute(
@@ -1703,8 +1994,7 @@ class LiveLinksOnlyGuard:
                 return
             case_id = uuid.uuid4().hex[:16]
             blocked_reason = text_violation(
-                self.bot.message_text(message),
-                self.bot.feed_blocked_domain,
+                self.bot.message_text(message), self.bot.feed_blocked_domain
             )
             report = {
                 'guild_id': message.guild.id,
@@ -1719,9 +2009,7 @@ class LiveLinksOnlyGuard:
                     f'{len(rejected)} link(s) did not match approved live-link formats.'
                 ),
                 'repost_body': (
-                    section_repost_body(message)
-                    if not blocked_reason
-                    else None
+                    section_repost_body(message) if not blocked_reason else None
                 ),
                 'repost_blocked_reason': blocked_reason,
             }
@@ -1729,60 +2017,42 @@ class LiveLinksOnlyGuard:
                 self.db.execute(
                     'INSERT INTO section_cases_v1 VALUES (?,?,?,?,?,?)',
                     (
-                        case_id,
-                        message_id,
-                        channel.id,
-                        digest,
-                        json.dumps(report),
-                        'planned',
+                        case_id, message_id, channel.id,
+                        digest, json.dumps(report), 'planned',
                     ),
                 )
                 self.event(
-                    case_id,
-                    'before',
-                    report,
+                    case_id, 'before', report,
                     'Deletion planned; not yet confirmed.',
                 )
             logger.info(
                 'Live-link violation detected | case=%s | message=%s '
                 '| links=%s | rejected=%s',
-                case_id,
-                message_id,
-                len(links),
-                len(rejected),
+                case_id, message_id, len(links), len(rejected),
             )
         await self.flush(case_id)
         try:
             latest = await channel.fetch_message(message_id)
         except discord.NotFound:
             self.terminal(
-                case_id,
-                message_id,
-                'missing',
-                report,
+                case_id, message_id, 'missing', report,
                 'Message disappeared before deletion; deleter unconfirmed.',
             )
             await self.flush(case_id)
             return
         if self.digest(latest) != digest:
             self.terminal(
-                case_id,
-                message_id,
-                'changed',
-                report,
+                case_id, message_id, 'changed', report,
                 'Deletion cancelled because the message changed; fresh scan queued.',
             )
             self.enqueue(channel.id, message_id, edited=True)
             await self.flush(case_id)
             return
         blocked_reason = text_violation(
-            self.bot.message_text(latest),
-            self.bot.feed_blocked_domain,
+            self.bot.message_text(latest), self.bot.feed_blocked_domain
         )
         report['repost_body'] = (
-            section_repost_body(latest)
-            if not blocked_reason
-            else None
+            section_repost_body(latest) if not blocked_reason else None
         )
         report['repost_blocked_reason'] = blocked_reason
         with self.db:
@@ -1794,17 +2064,13 @@ class LiveLinksOnlyGuard:
             await latest.delete()
         except discord.NotFound:
             self.terminal(
-                case_id,
-                message_id,
-                'missing',
-                report,
+                case_id, message_id, 'missing', report,
                 'Message disappeared during deletion; deleter unconfirmed.',
             )
         except Exception as exc:
             logger.exception(
                 'Live-link deletion failed | case=%s | message=%s',
-                case_id,
-                message_id,
+                case_id, message_id,
             )
             with self.db:
                 self.db.execute(
@@ -1812,9 +2078,7 @@ class LiveLinksOnlyGuard:
                     (case_id,),
                 )
                 self.event(
-                    case_id,
-                    'failed',
-                    report,
+                    case_id, 'failed', report,
                     f'Deletion not confirmed: {type(exc).__name__}: {exc}; '
                     'retry scheduled.',
                 )
@@ -1824,16 +2088,12 @@ class LiveLinksOnlyGuard:
                 )
         else:
             self.terminal(
-                case_id,
-                message_id,
-                'confirmed',
-                report,
+                case_id, message_id, 'confirmed', report,
                 'Discord acknowledged deletion by this bot.',
             )
             logger.info(
                 'Live-link message deleted | case=%s | message=%s',
-                case_id,
-                message_id,
+                case_id, message_id,
             )
         await self.flush(case_id)
 
@@ -1844,9 +2104,7 @@ class LiveLinksOnlyGuard:
         )
         cursor = int(self.bot.setting(prefix + 'cursor', str(initial)))
         async for message in channel.history(
-            limit=None,
-            after=discord.Object(id=cursor),
-            oldest_first=True,
+            limit=None, after=discord.Object(id=cursor), oldest_first=True
         ):
             self.enqueue(channel.id, message.id)
             self.bot.set_setting(prefix + 'cursor', message.id)
@@ -1868,8 +2126,7 @@ class LiveLinksOnlyGuard:
         if not LIVE_LINKS_ONLY_CHANNEL_ID:
             return
         logger.info(
-            'Live-link scan started | channel=%s',
-            LIVE_LINKS_ONLY_CHANNEL_ID,
+            'Live-link scan started | channel=%s', LIVE_LINKS_ONLY_CHANNEL_ID
         )
         try:
             channel = (
@@ -1889,9 +2146,7 @@ class LiveLinksOnlyGuard:
             try:
                 await self.discover(channel)
             except Exception:
-                logger.exception(
-                    'Live-link discovery failed; using queued messages'
-                )
+                logger.exception('Live-link discovery failed; using queued messages')
             rows = self.db.execute(
                 'SELECT message_id FROM section_jobs_v1 '
                 'WHERE channel_id=? AND due<=? ORDER BY message_id LIMIT 300',
@@ -1903,8 +2158,7 @@ class LiveLinksOnlyGuard:
                         await self.process(channel, message_id)
                 except Exception:
                     logger.exception(
-                        'Live-link processing failed | message=%s',
-                        message_id,
+                        'Live-link processing failed | message=%s', message_id
                     )
                     self.db.execute(
                         'UPDATE section_jobs_v1 SET due=? WHERE message_id=?',
@@ -1912,8 +2166,7 @@ class LiveLinksOnlyGuard:
                     )
                     self.db.commit()
             logger.info(
-                'Live-link scan completed | queued messages processed=%s',
-                len(rows),
+                'Live-link scan completed | queued messages processed=%s', len(rows)
             )
         except Exception:
             logger.exception('Live-link section scan failed')
@@ -1925,10 +2178,70 @@ class LiveLinksOnlyGuard:
         await asyncio.sleep(LIVE_LINKS_SCAN_MINUTES * 60)
 
 
+class CauseAwareLiveLinksOnlyGuard(LiveLinksOnlyGuard):
+    def digest(self, message):
+        original = super().digest(message)
+        policy = (
+            f'{CAUSE_EXCEPTION_POLICY}:'
+            f'{CAUSE_EXCEPTION_USERNAME}:'
+            f'{CAUSE_EXCEPTION_USER_ID}'
+        )
+        return hashlib.sha256(
+            f'{original}:{policy}'.encode()
+        ).hexdigest()
+
+    async def process(self, channel, message_id):
+        try:
+            message = await channel.fetch_message(message_id)
+        except discord.NotFound:
+            return await super().process(channel, message_id)
+        qualifies = (
+            channel.id == LIVE_LINKS_ONLY_CHANNEL_ID
+            and is_cause_announcement(message)
+        )
+        if qualifies and text_violation(
+            self.bot.message_text(message), self.bot.feed_blocked_domain
+        ):
+            qualifies = False
+        if not qualifies:
+            return await super().process(channel, message_id)
+        active_cases = self.db.execute(
+            "SELECT case_id,report FROM section_cases_v1 "
+            "WHERE message_id=? AND channel_id=? "
+            "AND state IN ('planned','deleting','retry')",
+            (message_id, channel.id),
+        ).fetchall()
+        for case_id, report_json in active_cases:
+            report = json.loads(report_json)
+            report.pop('repost_body', None)
+            self.terminal(
+                case_id, message_id, 'exempt', report,
+                'Link-rule deletion cancelled: designated account posted '
+                'a qualifying cause announcement. NSFW moderation remains active.',
+            )
+        with self.db:
+            self.db.execute(
+                'INSERT OR REPLACE INTO section_clean_v1 VALUES (?,?)',
+                (message_id, self.digest(message)),
+            )
+            self.db.execute(
+                'DELETE FROM section_jobs_v1 WHERE message_id=?',
+                (message_id,),
+            )
+        if channel.id == CHANNEL_ID:
+            self.bot.enqueue(message_id)
+        logger.info(
+            'Cause announcement allowed | author_id=%s | message=%s',
+            message.author.id, message_id,
+        )
+        if active_cases:
+            await self.flush()
+
+
 class LiveSectionModerator(Moderator):
     def __init__(self):
         super().__init__()
-        self.live_link_guard = LiveLinksOnlyGuard(self)
+        self.live_link_guard = CauseAwareLiveLinksOnlyGuard(self)
 
     async def setup_hook(self):
         await super().setup_hook()
@@ -1938,17 +2251,12 @@ class LiveSectionModerator(Moderator):
     async def on_message(self, message):
         await super().on_message(message)
         if message.author.id != self.user.id:
-            self.live_link_guard.enqueue(
-                message.channel.id,
-                message.id,
-            )
+            self.live_link_guard.enqueue(message.channel.id, message.id)
 
     async def on_raw_message_edit(self, payload):
         await super().on_raw_message_edit(payload)
         self.live_link_guard.enqueue(
-            payload.channel_id,
-            payload.message_id,
-            edited=True,
+            payload.channel_id, payload.message_id, edited=True
         )
 
     async def close(self):
@@ -1962,8 +2270,196 @@ class LiveSectionModerator(Moderator):
         await super().close()
 
 
+class TrollFlagger:
+    def __init__(self, bot):
+        self.bot = bot
+        self.db = bot.db
+        self.db.executescript('''
+            CREATE TABLE IF NOT EXISTS troll_jobs_v1 (
+                message_id INTEGER PRIMARY KEY,
+                channel_id INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS troll_seen_v1 (
+                message_id INTEGER PRIMARY KEY,
+                digest TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS troll_outbox_v1 (
+                case_id TEXT PRIMARY KEY,
+                body TEXT NOT NULL,
+                sent INTEGER NOT NULL DEFAULT 0
+            );
+        ''')
+        self.db.commit()
+
+    def enqueue(self, channel_id, message_id):
+        if channel_id in TROLL_FLAG_CHANNEL_IDS:
+            with self.db:
+                self.db.execute(
+                    'INSERT OR IGNORE INTO troll_jobs_v1 VALUES (?,?)',
+                    (message_id, channel_id),
+                )
+
+    async def check(self, channel, message_id):
+        try:
+            message = await channel.fetch_message(message_id)
+        except discord.NotFound:
+            with self.db:
+                self.db.execute(
+                    'DELETE FROM troll_jobs_v1 WHERE message_id=?',
+                    (message_id,),
+                )
+            return
+        findings = (
+            []
+            if message.author.id == self.bot.user.id
+            else troll_comment_findings(message.content)
+        )
+        digest = hashlib.sha256(
+            (TROLL_FLAG_POLICY + ':' + (message.content or '')).encode()
+        ).hexdigest()
+        previous = self.db.execute(
+            'SELECT digest FROM troll_seen_v1 WHERE message_id=?',
+            (message_id,),
+        ).fetchone()
+        with self.db:
+            if findings and (not previous or previous[0] != digest):
+                case_id = uuid.uuid4().hex[:16]
+                details = '\n'.join(
+                    f'{label}: {phrase}' for phrase, label in findings
+                )
+                excerpt = (message.content or '')[:900]
+                body = (
+                    f'TROLL COMMENT REVIEW | Case {case_id}\n'
+                    f'Author ID: {message.author.id}\n'
+                    f'Channel: <#{channel.id}>\n'
+                    f'Message ID: {message_id}\n'
+                    f'Original: {message.jump_url}\n'
+                    f'Posted UTC: {message.created_at.isoformat()}\n'
+                    f'Flagged UTC: {discord.utils.utcnow().isoformat()}\n'
+                    f'{details[:600]}\nMessage excerpt:\n{excerpt}\n'
+                    'Flag only. No deletion or punishment. Intent is unconfirmed.'
+                )
+                self.db.execute(
+                    'INSERT INTO troll_outbox_v1(case_id,body) VALUES (?,?)',
+                    (case_id, body[:2000]),
+                )
+            self.db.execute(
+                'INSERT OR REPLACE INTO troll_seen_v1 VALUES (?,?)',
+                (message_id, digest),
+            )
+            self.db.execute(
+                'DELETE FROM troll_jobs_v1 WHERE message_id=?',
+                (message_id,),
+            )
+
+    async def flush(self):
+        rows = self.db.execute(
+            'SELECT case_id,body FROM troll_outbox_v1 WHERE sent=0 LIMIT 100'
+        ).fetchall()
+        for case_id, body in rows:
+            try:
+                channel = (
+                    self.bot.get_channel(MOD_LOG_ID)
+                    or await self.bot.fetch_channel(MOD_LOG_ID)
+                )
+                await channel.send(
+                    body,
+                    suppress_embeds=True,
+                    allowed_mentions=discord.AllowedMentions.none(),
+                )
+                with self.db:
+                    self.db.execute(
+                        'UPDATE troll_outbox_v1 SET sent=1 WHERE case_id=?',
+                        (case_id,),
+                    )
+            except Exception:
+                logger.exception(
+                    'Troll review log retained | case=%s', case_id
+                )
+
+    @tasks.loop(minutes=SCAN_MINUTES)
+    async def loop(self):
+        for channel_id in TROLL_FLAG_CHANNEL_IDS:
+            try:
+                channel = (
+                    self.bot.get_channel(channel_id)
+                    or await self.bot.fetch_channel(channel_id)
+                )
+                key = f'troll_cursor_{channel_id}'
+                initial = discord.utils.time_snowflake(
+                    discord.utils.utcnow() - timedelta(hours=24)
+                )
+                cursor = int(self.bot.setting(key, str(initial)))
+                async for message in channel.history(
+                    limit=1000,
+                    after=discord.Object(id=cursor),
+                    oldest_first=True,
+                ):
+                    self.enqueue(channel_id, message.id)
+                    self.bot.set_setting(key, message.id)
+                async for message in channel.history(
+                    limit=100, oldest_first=False
+                ):
+                    self.enqueue(channel_id, message.id)
+                rows = self.db.execute(
+                    'SELECT message_id FROM troll_jobs_v1 WHERE channel_id=? '
+                    'ORDER BY message_id LIMIT 300',
+                    (channel_id,),
+                ).fetchall()
+                for (message_id,) in rows:
+                    try:
+                        await self.check(channel, message_id)
+                    except Exception:
+                        logger.exception(
+                            'Troll comment check failed | message=%s',
+                            message_id,
+                        )
+            except Exception:
+                logger.exception(
+                    'Troll comment channel scan failed | channel=%s',
+                    channel_id,
+                )
+        await self.flush()
+
+    @loop.before_loop
+    async def before_loop(self):
+        await self.bot.wait_until_ready()
+        await asyncio.sleep(SCAN_MINUTES * 60)
+
+
+class TrollAwareModerator(LiveSectionModerator):
+    def __init__(self):
+        super().__init__()
+        self.troll_flagger = TrollFlagger(self)
+
+    async def setup_hook(self):
+        await super().setup_hook()
+        self.troll_flagger.loop.start()
+
+    async def on_message(self, message):
+        await super().on_message(message)
+        if message.author.id != self.user.id:
+            self.troll_flagger.enqueue(message.channel.id, message.id)
+
+    async def on_raw_message_edit(self, payload):
+        await super().on_raw_message_edit(payload)
+        self.troll_flagger.enqueue(
+            payload.channel_id, payload.message_id
+        )
+
+    async def close(self):
+        task = self.troll_flagger.loop.get_task()
+        self.troll_flagger.loop.cancel()
+        if task and task is not asyncio.current_task():
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        await super().close()
+
+
 if __name__ == '__main__':
     token = os.getenv('DISCORD_TOKEN', '').strip()
     if not token:
         raise SystemExit('Set DISCORD_TOKEN in your hosting environment.')
-    LiveSectionModerator().run(token, log_handler=None)
+    TrollAwareModerator().run(token, log_handler=None)

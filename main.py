@@ -23,16 +23,18 @@ TROLL_FLAG_CHANNEL_IDS = {CHANNEL_ID}
 
 SCAN_MINUTES = 15
 LIVE_LINKS_SCAN_MINUTES = 15
-POLICY_VERSION = "local-v10-800-text-patterns"
+RELATED_COMMENT_WINDOW_SECONDS = 120
+VIOLATION_TIMEOUT_SECONDS = 86400
+
+POLICY_VERSION = "local-v11-embedded-media-and-nude-promotion"
 LIVE_LINKS_POLICY = "live-links-only-v4-tiktok-resolution"
-TROLL_FLAG_POLICY = "troll-review-v5-deletion-audit"
+TROLL_FLAG_POLICY = "troll-review-v6-related-comment-cleanup"
 
 ALLOWED_ACCOUNT = "unknownbear_"
 CAUSE_EXCEPTION_USERNAME = "thatzionistgirl"
 CAUSE_EXCEPTION_USER_ID = int(os.getenv("CAUSE_EXCEPTION_USER_ID", "0").strip() or "0")
 CAUSE_EXCEPTION_POLICY = "cause-announcement-v1"
 
-VIOLATION_TIMEOUT_SECONDS = 86400
 TIMEOUT_ENABLED_AT = time.time()
 MAX_MEDIA_BYTES = 25 * 1024 * 1024
 MAX_VIDEO_SECONDS = 120
@@ -41,6 +43,7 @@ NUDITY_THRESHOLD = 0.65
 ADULT_FEED_URL = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/nsfw-onlydomains.txt"
 FEED_REFRESH_SECONDS = 86400
 FEED_MAX_BYTES = 5 * 1024 * 1024
+
 FEED_EXCLUDED_ROOTS = {
     "discord.com", "discord.gg", "discordapp.com", "discordapp.net",
     "x.com", "twitter.com", "tiktok.com", "instagram.com", "facebook.com",
@@ -501,6 +504,16 @@ TEXT_PATTERNS = tuple({
     )
 }.values())
 
+TEXT_PATTERNS += tuple(re.compile(pattern) for pattern in (
+    r'\b(?:link to|see|watch|unlock|get|find) (?:the |my |a )?'
+    r'(?:free |full |uncensored )?(?:nude|naked|nuddy|nudd[yi]e|nudie) '
+    r'(?:version|content|videos?|pics?|photos?)\b',
+    r'\b(?:free |full |uncensored )?(?:nude|naked|nuddy|nudie) '
+    r'(?:version|content|videos?|pics?|photos?) '
+    r'(?:is |available )?(?:in|on|at|through) (?:my |the )?'
+    r'(?:profile|bio|page|link)\b',
+))
+
 HOST_PATTERN = re.compile(
     r'(?<![\w@-])(?:[a-z0-9](?:[a-z0-9-]{0,62})\.)+[a-z]{2,63}(?![\w-])',
     re.I,
@@ -574,6 +587,12 @@ TIKTOK_SHARE_HOSTS = frozenset({
     "vm.tiktok.com", "vt.tiktok.com",
 })
 TIKTOK_RESOLUTION_CACHE = {}
+
+EMBEDDED_MEDIA_HOSTS = frozenset({
+    "pbs.twimg.com", "video.twimg.com",
+    "images-ext-1.discordapp.net", "images-ext-2.discordapp.net",
+    "media.discordapp.net", "cdn.discordapp.com",
+})
 
 TROLL_PHRASES = (
     r'trump supporters (?:are|are in|belong to) (?:a |the )?cult',
@@ -910,8 +929,7 @@ async def resolve_tiktok_share(candidate):
     if len(TIKTOK_RESOLUTION_CACHE) >= 2048:
         TIKTOK_RESOLUTION_CACHE.clear()
     TIKTOK_RESOLUTION_CACHE[candidate] = (
-        time.monotonic() + (3600 if result != "unknown" else 60),
-        result,
+        time.monotonic() + (3600 if result != "unknown" else 60), result
     )
     return result
 
@@ -988,6 +1006,55 @@ def troll_comment_findings(content):
         )
         findings.append((match.group(), label))
     return findings
+
+
+def trusted_embedded_media_url(url):
+    try:
+        parsed = urlsplit(url)
+        return (
+            parsed.scheme.lower() == "https"
+            and (parsed.hostname or "").lower() in EMBEDDED_MEDIA_HOSTS
+            and parsed.username is None
+            and parsed.password is None
+            and parsed.port in (None, 443)
+        )
+    except (ValueError, UnicodeError):
+        return False
+
+
+class EmbeddedMediaDownload:
+    size = 0
+
+    def __init__(self, url):
+        self.url = url
+
+    async def save(self, destination):
+        import aiohttp
+
+        if not trusted_embedded_media_url(self.url):
+            raise ValueError("Unapproved embedded-media URL")
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=55),
+            cookie_jar=aiohttp.DummyCookieJar(),
+            trust_env=False,
+        ) as session:
+            async with session.get(self.url, allow_redirects=False) as response:
+                if response.status != 200:
+                    raise ValueError(f"Embedded-media HTTP status {response.status}")
+                content_type = response.headers.get("Content-Type", "").lower()
+                if not content_type.startswith(("image/", "video/")):
+                    raise ValueError("Embedded URL did not return an image or video")
+                if response.content_length and response.content_length > MAX_MEDIA_BYTES:
+                    raise ValueError("Embedded media exceeds 25 MiB")
+                size = 0
+                with open(destination, "wb") as output:
+                    async for chunk in response.content.iter_chunked(65536):
+                        size += len(chunk)
+                        if size > MAX_MEDIA_BYTES:
+                            raise ValueError("Embedded media exceeds 25 MiB")
+                        output.write(chunk)
+                if not size:
+                    raise ValueError("Empty embedded-media response")
 
 
 def media_worker(source):
@@ -1208,7 +1275,8 @@ class Moderator(discord.Client):
     async def scan_attachment(self, attachment):
         if attachment.size > MAX_MEDIA_BYTES:
             return {
-                "blocked": False, "complete": False,
+                "blocked": False,
+                "complete": False,
                 "reason": "Attachment exceeds 25 MiB",
             }
         with tempfile.TemporaryDirectory() as folder:
@@ -1349,8 +1417,33 @@ class Moderator(discord.Client):
                 return "Nudity detected in attached media", []
             if not result["complete"]:
                 limitations.append(result.get("reason", "Incomplete media scan"))
-        if any(e.image or e.thumbnail or e.video for e in message.embeds):
-            limitations.append("Linked media was not visually scanned")
+        seen_media = set()
+        for embed in message.embeds:
+            for media in (embed.video, embed.image, embed.thumbnail):
+                if not media or not media.url or media.url in seen_media:
+                    continue
+                seen_media.add(media.url)
+                candidates = list(dict.fromkeys(
+                    value
+                    for value in (getattr(media, "proxy_url", None), media.url)
+                    if value and trusted_embedded_media_url(value)
+                ))
+                if not candidates:
+                    limitations.append("Embedded media host is not approved for download")
+                    continue
+                completed = False
+                for url in candidates:
+                    try:
+                        result = await self.scan_attachment(EmbeddedMediaDownload(url))
+                        if result["blocked"]:
+                            return "Nudity detected in linked or embedded media", []
+                        if result["complete"]:
+                            completed = True
+                            break
+                    except Exception:
+                        logger.exception("Embedded media scan failed | message=%s", message.id)
+                if not completed:
+                    limitations.append("Linked media could not be completely scanned")
         return None, limitations
 
     def record_event(self, case_id, stage, body):
@@ -1453,8 +1546,7 @@ class Moderator(discord.Client):
         if self.fingerprint(latest) != digest:
             self.complete_action(
                 case_id, "changed",
-                "Deletion cancelled because the message or policy changed; "
-                "queued for a fresh scan.",
+                "Deletion cancelled because the message or policy changed; queued for a fresh scan.",
             )
             self.enqueue(message_id, edited=True)
             await self.flush_logs(case_id)
@@ -1495,12 +1587,9 @@ class Moderator(discord.Client):
             return
         else:
             self.complete_action(
-                case_id, "confirmed",
-                "Discord acknowledged successful deletion by this bot.",
+                case_id, "confirmed", "Discord acknowledged successful deletion by this bot."
             )
-            logger.info(
-                "NSFW message deleted | case=%s | message=%s", case_id, message_id
-            )
+            logger.info("NSFW message deleted | case=%s | message=%s", case_id, message_id)
         self.finish(message_id)
         await self.flush_logs(case_id)
 
@@ -1543,8 +1632,7 @@ class Moderator(discord.Client):
                 await self.execute_action(channel, case_id)
             elif limitations:
                 logger.warning(
-                    "Incomplete scan for %s: %s",
-                    message_id, "; ".join(set(limitations)),
+                    "Incomplete scan for %s: %s", message_id, "; ".join(set(limitations))
                 )
                 self.db.execute(
                     "UPDATE jobs_v3 SET due=? WHERE id=?",
@@ -1917,9 +2005,7 @@ class LiveLinksOnlyGuard:
                     "INSERT INTO section_cases_v1 VALUES (?,?,?,?,?,?)",
                     (case_id, message_id, channel.id, digest, json.dumps(report), "planned"),
                 )
-                self.event(
-                    case_id, "before", report, "Deletion planned; not yet confirmed."
-                )
+                self.event(case_id, "before", report, "Deletion planned; not yet confirmed.")
             logger.info(
                 "Live-link violation detected | case=%s | message=%s | links=%s | rejected=%s",
                 case_id, message_id, len(links), len(rejected),
@@ -2171,8 +2257,6 @@ class TrollFlagger:
                 body TEXT NOT NULL,
                 sent INTEGER NOT NULL DEFAULT 0
             );
-        """)
-        self.db.executescript("""
             CREATE TABLE IF NOT EXISTS hate_deletions_v1 (
                 case_id TEXT PRIMARY KEY,
                 message_id INTEGER NOT NULL,
@@ -2259,8 +2343,7 @@ class TrollFlagger:
                 except Exception as exc:
                     with self.db:
                         self.deletion_log(
-                            case_id,
-                            "failed-" + uuid.uuid4().hex,
+                            case_id, "failed-" + uuid.uuid4().hex,
                             f"AFTER / FAILED | HATE TEXT | Case {case_id}\n"
                             f"Message ID: {message_id}\n"
                             f"{type(exc).__name__}: {exc}\nRetry next scan.",
@@ -2347,8 +2430,7 @@ class TrollFlagger:
                         case_id, "a-before",
                         f"BEFORE | HATE TEXT | Case {case_id}\n"
                         f"Author ID: {message.author.id}\n"
-                        f"Channel ID: {channel.id}\n"
-                        f"Message ID: {message_id}\n"
+                        f"Channel ID: {channel.id}\nMessage ID: {message_id}\n"
                         f"Posted UTC: {message.created_at.isoformat()}\n"
                         "Original message text follows in numbered parts. "
                         "Attachments are not copied.",
@@ -2359,19 +2441,15 @@ class TrollFlagger:
                     ] or [""]
                     for index, part in enumerate(parts):
                         self.deletion_log(
-                            case_id,
-                            f"b-text-{index:05d}",
+                            case_id, f"b-text-{index:05d}",
                             f"BEFORE TEXT | Case {case_id} | "
                             f"Part {index + 1}/{len(parts)}\n" + part,
                         )
                     self.bot.schedule_violation_timeout(
-                        "hate-" + case_id,
-                        message,
-                        "Direct hate-text pattern violation",
+                        "hate-" + case_id, message, "Direct hate-text pattern violation"
                     )
             self.db.execute(
-                "INSERT OR REPLACE INTO troll_seen_v1 VALUES (?,?)",
-                (message_id, digest),
+                "INSERT OR REPLACE INTO troll_seen_v1 VALUES (?,?)", (message_id, digest)
             )
             self.db.execute(
                 "DELETE FROM troll_jobs_v1 WHERE message_id=?", (message_id,)
@@ -2457,14 +2535,258 @@ class TrollFlagger:
         await asyncio.sleep(SCAN_MINUTES * 60)
 
 
+class ReliableTrollFlagger(TrollFlagger):
+    def __init__(self, bot):
+        super().__init__(bot)
+        self.flush_lock = asyncio.Lock()
+        self.db.executescript("""
+            CREATE TABLE IF NOT EXISTS hate_context_jobs_v2 (
+                parent_case TEXT PRIMARY KEY,
+                message_id INTEGER NOT NULL,
+                channel_id INTEGER NOT NULL,
+                author_id INTEGER NOT NULL,
+                posted_at REAL NOT NULL,
+                state TEXT NOT NULL DEFAULT 'pending'
+            );
+            CREATE TABLE IF NOT EXISTS hate_context_targets_v2 (
+                case_id TEXT PRIMARY KEY,
+                parent_case TEXT NOT NULL,
+                author_id INTEGER NOT NULL
+            );
+        """)
+        self.db.commit()
+
+    async def safe_flush_logs(self, case_id):
+        try:
+            await self.flush_deletion_logs(case_id)
+        except Exception:
+            logger.exception("Deletion log delivery pending | case=%s", case_id)
+
+    async def check(self, channel, message_id):
+        try:
+            original = await channel.fetch_message(message_id)
+        except discord.NotFound:
+            return await super().check(channel, message_id)
+        await super().check(channel, message_id)
+        direct = any(
+            label.startswith("Possible direct statement")
+            for phrase, label in troll_comment_findings(original.content)
+        )
+        if not direct or original.author.id == self.bot.user.id:
+            return
+        row = self.db.execute(
+            "SELECT case_id FROM hate_deletions_v1 WHERE message_id=? "
+            "ORDER BY rowid DESC LIMIT 1",
+            (message_id,),
+        ).fetchone()
+        if row:
+            with self.db:
+                self.db.execute(
+                    "INSERT OR IGNORE INTO hate_context_jobs_v2 "
+                    "(parent_case,message_id,channel_id,author_id,posted_at) "
+                    "VALUES (?,?,?,?,?)",
+                    (
+                        row[0], message_id, channel.id, original.author.id,
+                        original.created_at.timestamp(),
+                    ),
+                )
+
+    async def capture_related(self, job):
+        parent, anchor_id, channel_id, author_id, posted_at = job
+        channel = (
+            self.bot.get_channel(channel_id)
+            or await self.bot.fetch_channel(channel_id)
+        )
+        start = datetime.fromtimestamp(
+            posted_at - RELATED_COMMENT_WINDOW_SECONDS, timezone.utc
+        )
+        end = datetime.fromtimestamp(
+            posted_at + RELATED_COMMENT_WINDOW_SECONDS, timezone.utc
+        )
+        count = 0
+        async for message in channel.history(
+            limit=None,
+            after=start - timedelta(milliseconds=1),
+            before=end + timedelta(milliseconds=1),
+            oldest_first=True,
+        ):
+            if (
+                message.author.id != author_id
+                or message.id == anchor_id
+                or not start <= message.created_at <= end
+            ):
+                continue
+            existing = self.db.execute(
+                "SELECT 1 FROM hate_deletions_v1 WHERE message_id=?", (message.id,)
+            ).fetchone()
+            if existing:
+                continue
+            case_id = f"context-{parent}-{message.id}"
+            with self.db:
+                self.db.execute(
+                    "INSERT OR IGNORE INTO hate_deletions_v1 "
+                    "(case_id,message_id,channel_id,content) VALUES (?,?,?,?)",
+                    (case_id, message.id, channel_id, message.content or ""),
+                )
+                self.db.execute(
+                    "INSERT OR IGNORE INTO hate_context_targets_v2 VALUES (?,?,?)",
+                    (case_id, parent, author_id),
+                )
+                self.deletion_log(
+                    case_id, "a-before",
+                    f"BEFORE | RELATED USER COMMENT | Case {case_id}\n"
+                    f"Parent flagged case: {parent}\n"
+                    f"Server ID: {message.guild.id}\n"
+                    f"Channel ID: {channel_id}\nAuthor ID: {author_id}\n"
+                    f"Message ID: {message.id}\n"
+                    f"Posted UTC: {message.created_at.isoformat()}\n"
+                    f"Flagged message ID: {anchor_id}\n"
+                    f"Window: {start.isoformat()} through {end.isoformat()}\n"
+                    "Reason: same user and channel within the configured time window. "
+                    "This message was not independently classified as hate text.\n"
+                    f"Attachment IDs: {[a.id for a in message.attachments]}\n"
+                    "Media is not copied. Full message text follows.",
+                )
+                content = message.content or "[No message text]"
+                parts = [
+                    content[i:i + 500] for i in range(0, len(content), 500)
+                ]
+                for index, part in enumerate(parts):
+                    self.deletion_log(
+                        case_id, f"b-text-{index:05d}",
+                        f"BEFORE TEXT | Case {case_id} | "
+                        f"Part {index + 1}/{len(parts)}\n{part}",
+                    )
+            count += 1
+        if time.time() >= end.timestamp():
+            with self.db:
+                self.db.execute(
+                    "UPDATE hate_context_jobs_v2 SET state='complete' WHERE parent_case=?",
+                    (parent,),
+                )
+                total = self.db.execute(
+                    "SELECT count(*) FROM hate_context_targets_v2 WHERE parent_case=?",
+                    (parent,),
+                ).fetchone()[0]
+                self.deletion_log(
+                    parent, "zz-window-complete",
+                    f"RELATED COMMENT SEARCH COMPLETE | Case {parent}\n"
+                    f"Author ID: {author_id}\nChannel ID: {channel_id}\n"
+                    f"Window: {start.isoformat()} through {end.isoformat()}\n"
+                    f"Related messages queued: {total}. "
+                    "Each message has its own deletion outcome report.",
+                )
+        return count
+
+    async def process_deletion(self, channel, row):
+        async with self.bot.message_lock:
+            case_id = row[0]
+            current = self.db.execute(
+                "SELECT case_id,message_id,content,state FROM hate_deletions_v1 "
+                "WHERE case_id=?", (case_id,),
+            ).fetchone()
+            if not current:
+                return
+            case_id, message_id, original, state = current
+            await self.safe_flush_logs(case_id)
+            if state != "pending":
+                return
+            related = self.db.execute(
+                "SELECT parent_case,author_id FROM hate_context_targets_v2 WHERE case_id=?",
+                (case_id,),
+            ).fetchone()
+            try:
+                latest = await channel.fetch_message(message_id)
+                if related:
+                    eligible = latest.author.id == related[1]
+                else:
+                    eligible = any(
+                        label.startswith("Possible direct statement")
+                        for phrase, label in troll_comment_findings(latest.content)
+                    )
+                if not eligible or latest.content != original:
+                    final_state = "changed"
+                    status = (
+                        "Deletion cancelled: content or eligibility changed; queued for rescan."
+                    )
+                    with self.db:
+                        self.db.execute(
+                            "DELETE FROM troll_seen_v1 WHERE message_id=?", (message_id,)
+                        )
+                    self.enqueue(channel.id, message_id)
+                else:
+                    await latest.delete()
+                    final_state = "deleted"
+                    status = "Discord acknowledged successful deletion by this bot."
+            except discord.NotFound:
+                final_state = "absent"
+                status = "Message already absent; who deleted it cannot be confirmed."
+            except Exception as exc:
+                logger.exception("Comment deletion failed | case=%s", case_id)
+                with self.db:
+                    self.deletion_log(
+                        case_id, "failure-" + uuid.uuid4().hex,
+                        f"AFTER / FAILED | COMMENT REMOVAL | Case {case_id}\n"
+                        f"Channel ID: {channel.id}\nMessage ID: {message_id}\n"
+                        f"{type(exc).__name__}: {str(exc)[:350]}\n"
+                        "Deletion remains queued; retry in the next worker cycle. "
+                        "If Forbidden, check Manage Messages in this channel.",
+                    )
+                await self.safe_flush_logs(case_id)
+                return
+            with self.db:
+                self.db.execute(
+                    "UPDATE hate_deletions_v1 SET state=? WHERE case_id=?",
+                    (final_state, case_id),
+                )
+                self.deletion_log(
+                    case_id, "z-after",
+                    f"AFTER / {final_state.upper()} | COMMENT REMOVAL | Case {case_id}\n"
+                    f"Channel ID: {channel.id}\nMessage ID: {message_id}\n"
+                    f"Reported UTC: {discord.utils.utcnow().isoformat()}\n{status}",
+                )
+            await self.safe_flush_logs(case_id)
+
+    async def flush(self):
+        async with self.flush_lock:
+            jobs = self.db.execute(
+                "SELECT parent_case,message_id,channel_id,author_id,posted_at "
+                "FROM hate_context_jobs_v2 WHERE state='pending' LIMIT 100"
+            ).fetchall()
+            for job in jobs:
+                try:
+                    await self.capture_related(job)
+                except Exception as exc:
+                    logger.exception("Related comment discovery retained | case=%s", job[0])
+                    with self.db:
+                        self.deletion_log(
+                            job[0], "context-failed-" + uuid.uuid4().hex,
+                            f"RELATED COMMENT SEARCH FAILED | Case {job[0]}\n"
+                            f"{type(exc).__name__}: {str(exc)[:350]}\nRetry scheduled.",
+                        )
+            await super().flush()
+
+    @tasks.loop(seconds=30)
+    async def deletion_worker(self):
+        try:
+            await self.flush()
+        except Exception:
+            logger.exception("Comment deletion worker failed; retry next cycle")
+
+    @deletion_worker.before_loop
+    async def before_deletion_worker(self):
+        await self.bot.wait_until_ready()
+
+
 class TrollAwareModerator(LiveSectionModerator):
     def __init__(self):
         super().__init__()
-        self.troll_flagger = TrollFlagger(self)
+        self.troll_flagger = ReliableTrollFlagger(self)
 
     async def setup_hook(self):
         await super().setup_hook()
         self.troll_flagger.loop.start()
+        self.troll_flagger.deletion_worker.start()
 
     async def on_message(self, message):
         await super().on_message(message)
@@ -2476,6 +2798,13 @@ class TrollAwareModerator(LiveSectionModerator):
         self.troll_flagger.enqueue(payload.channel_id, payload.message_id)
 
     async def close(self):
+        deletion_task = self.troll_flagger.deletion_worker.get_task()
+        self.troll_flagger.deletion_worker.cancel()
+        if deletion_task and deletion_task is not asyncio.current_task():
+            try:
+                await deletion_task
+            except asyncio.CancelledError:
+                pass
         task = self.troll_flagger.loop.get_task()
         self.troll_flagger.loop.cancel()
         if task and task is not asyncio.current_task():
@@ -2532,8 +2861,7 @@ class ViolationTimeouts:
         until_at = time.time() + VIOLATION_TIMEOUT_SECONDS
         inserted = self.db.execute(
             "INSERT OR IGNORE INTO violation_timeouts_v1 "
-            "(case_key,guild_id,member_id,message_id,reason,until_at) "
-            "VALUES (?,?,?,?,?,?)",
+            "(case_key,guild_id,member_id,message_id,reason,until_at) VALUES (?,?,?,?,?,?)",
             (key, guild_id, member_id, message_id, reason, until_at),
         ).rowcount
         if inserted:
@@ -2552,8 +2880,7 @@ class ViolationTimeouts:
                     (stage, key),
                 )
                 self.report(
-                    key, stage, guild_id, member_id, message_id,
-                    reason, until_at, status,
+                    key, stage, guild_id, member_id, message_id, reason, until_at, status
                 )
 
         if state == "attempting":
@@ -2642,8 +2969,7 @@ class ViolationTimeouts:
                 )
                 with self.db:
                     self.db.execute(
-                        "UPDATE timeout_reports_v1 SET sent=1 WHERE report_id=?",
-                        (report_id,),
+                        "UPDATE timeout_reports_v1 SET sent=1 WHERE report_id=?", (report_id,)
                     )
             except Exception:
                 logger.exception("Timeout log retained | report=%s", report_id)

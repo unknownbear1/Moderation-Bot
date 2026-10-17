@@ -17,9 +17,33 @@ from urllib.parse import parse_qsl, unquote, urljoin, urlsplit
 
 CHANNEL_ID = 1560149527984476180
 MOD_LOG_ID = 1560149552168837181
-OUTPUT_CHANNEL_ID = 1560525700908322917
-LIVE_LINKS_ONLY_CHANNEL_ID = 1560149527984476180
-TROLL_FLAG_CHANNEL_IDS = {CHANNEL_ID}
+
+MODERATION_CHANNELS = {
+    "test": 1560149527984476180,
+    "testy": int(os.getenv("TESTY_CHANNEL_ID", "0") or "0"),
+}
+
+MODERATION_CATEGORY_IDS = set()
+
+LINK_REPOST_RULES = {
+    1560149527984476180: {
+        "output_channel_id": 1560525700908322917,
+        "source_permissions": (
+            "view_channel",
+            "read_message_history",
+            "manage_messages",
+        ),
+        "output_permissions": (
+            "view_channel",
+            "send_messages",
+            "embed_links",
+        ),
+    },
+}
+
+LIVE_LINKS_ONLY_CHANNEL_ID = next(iter(LINK_REPOST_RULES))
+OUTPUT_CHANNEL_ID = LINK_REPOST_RULES[LIVE_LINKS_ONLY_CHANNEL_ID]["output_channel_id"]
+TROLL_FLAG_CHANNEL_IDS = set(MODERATION_CHANNELS.values()) - {0}
 
 SCAN_MINUTES = 15
 LIVE_LINKS_SCAN_MINUTES = 15
@@ -675,6 +699,7 @@ TROLL_ADDITIONAL_ABUSE = (
 )
 
 TROLL_PHRASES += TROLL_EXPANDED_ABUSE + TROLL_ADDITIONAL_ABUSE
+
 TROLL_PATTERNS = tuple(
     re.compile(r'\b' + pattern + r'\b', re.I)
     for pattern in TROLL_PHRASES
@@ -1672,8 +1697,7 @@ class Moderator(discord.Client):
         ).fetchall()
         for sequence, body, stage in rows:
             try:
-                target_id = OUTPUT_CHANNEL_ID if stage == "output_confirmed" else MOD_LOG_ID
-                channel = self.get_channel(target_id) or await self.fetch_channel(target_id)
+                channel = self.get_channel(MOD_LOG_ID) or await self.fetch_channel(MOD_LOG_ID)
                 await channel.send(
                     body[:2000],
                     suppress_embeds=True,
@@ -1850,9 +1874,7 @@ class LiveLinksOnlyGuard:
             )
 
     def finish(self, message_id):
-        self.db.execute(
-            "DELETE FROM section_jobs_v1 WHERE message_id=?", (message_id,)
-        )
+        self.db.execute("DELETE FROM section_jobs_v1 WHERE message_id=?", (message_id,))
         self.db.commit()
 
     def terminal(self, case_id, message_id, state, report, status):
@@ -1878,9 +1900,19 @@ class LiveLinksOnlyGuard:
             try:
                 target_id = OUTPUT_CHANNEL_ID if stage == "output_confirmed" else MOD_LOG_ID
                 channel = self.bot.get_channel(target_id) or await self.bot.fetch_channel(target_id)
+                if stage == "output_confirmed":
+                    rule = LINK_REPOST_RULES[LIVE_LINKS_ONLY_CHANNEL_ID]
+                    member = channel.guild.me or await channel.guild.fetch_member(self.bot.user.id)
+                    permissions = channel.permissions_for(member)
+                    if not all(
+                        getattr(permissions, key, False)
+                        for key in rule["output_permissions"]
+                    ):
+                        raise PermissionError(
+                            "Link output channel is missing send/embed permissions"
+                        )
                 progress = self.db.execute(
-                    "SELECT next_part FROM section_delivery_v1 WHERE sequence=?",
-                    (sequence,),
+                    "SELECT next_part FROM section_delivery_v1 WHERE sequence=?", (sequence,)
                 ).fetchone()
                 next_part = progress[0] if progress else 0
                 parts = [
@@ -2028,15 +2060,57 @@ class LiveLinksOnlyGuard:
             self.enqueue(channel.id, message_id, edited=True)
             await self.flush(case_id)
             return
-        nsfw_reason = text_violation(
-            self.bot.message_text(latest), self.bot.feed_blocked_domain
-        )
-        report["repost_body"] = section_repost_body(latest) if not nsfw_reason else None
-        report["repost_blocked_reason"] = nsfw_reason
-        if nsfw_reason and hasattr(self.bot, "schedule_violation_timeout"):
-            self.bot.schedule_violation_timeout(
-                "nsfw-section-" + case_id, latest, "NSFW violation: " + nsfw_reason
+
+        nsfw_reason, scan_limits = await self.bot.inspect(latest)
+
+        if nsfw_reason:
+            report["repost_body"] = None
+            report["repost_blocked_reason"] = nsfw_reason
+            self.terminal(
+                case_id, message_id, "blocked_nsfw", report,
+                "Repost blocked by NSFW moderation: " + nsfw_reason,
             )
+            nsfw_case = self.bot.start_action(
+                latest, self.bot.fingerprint(latest), nsfw_reason
+            )
+            await self.bot.execute_action(channel, nsfw_case)
+            await self.flush(case_id)
+            return
+
+        if scan_limits:
+            with self.db:
+                self.db.execute(
+                    "UPDATE section_jobs_v1 SET due=? WHERE message_id=?",
+                    (time.time() + 600, message_id),
+                )
+                self.event(
+                    case_id, "scan_pending", report,
+                    "Repost withheld because media inspection is incomplete: "
+                    + "; ".join(sorted(set(scan_limits))),
+                )
+            await self.flush(case_id)
+            return
+
+        if any(
+            label.startswith("Possible direct statement")
+            for phrase, label in troll_comment_findings(latest.content)
+        ):
+            self.bot.troll_flagger.enqueue(channel.id, message_id)
+            with self.db:
+                self.db.execute(
+                    "UPDATE section_jobs_v1 SET due=? WHERE message_id=?",
+                    (time.time() + 600, message_id),
+                )
+                self.event(
+                    case_id, "hate_pending", report,
+                    "Repost withheld: direct hate-text match queued for moderation.",
+                )
+            await self.flush(case_id)
+            return
+
+        report["repost_body"] = section_repost_body(latest)
+        report["repost_blocked_reason"] = None
+
         with self.db:
             self.db.execute(
                 "UPDATE section_cases_v1 SET state='deleting',report=? WHERE case_id=?",
@@ -2275,7 +2349,7 @@ class TrollFlagger:
         self.db.commit()
 
     def enqueue(self, channel_id, message_id):
-        if channel_id in TROLL_FLAG_CHANNEL_IDS:
+        if channel_id in self.bot.moderation_channel_ids():
             with self.db:
                 self.db.execute(
                     "INSERT OR IGNORE INTO troll_jobs_v1 VALUES (?,?)",
@@ -2495,7 +2569,7 @@ class TrollFlagger:
 
     @tasks.loop(minutes=SCAN_MINUTES)
     async def loop(self):
-        for channel_id in TROLL_FLAG_CHANNEL_IDS:
+        for channel_id in self.bot.moderation_channel_ids():
             try:
                 channel = (
                     self.bot.get_channel(channel_id)
@@ -3032,8 +3106,206 @@ class TimeoutModerator(TrollAwareModerator):
         await super().close()
 
 
+class ChannelListModerator(TimeoutModerator):
+    def __init__(self):
+        super().__init__()
+        if len(LINK_REPOST_RULES) != 1:
+            raise ValueError("Configure exactly one special link-repost source channel.")
+        self.db.execute("""
+            CREATE TABLE IF NOT EXISTS nsfw_job_channels_v1 (
+                message_id INTEGER PRIMARY KEY,
+                channel_id INTEGER NOT NULL
+            )
+        """)
+        self.db.commit()
+
+    def moderation_channel_ids(self):
+        selected = {value for value in MODERATION_CHANNELS.values() if value}
+        source = self.get_channel(LIVE_LINKS_ONLY_CHANNEL_ID)
+        scope_guild = source.guild.id if source else None
+        for name, channel_id in MODERATION_CHANNELS.items():
+            if channel_id:
+                continue
+            matches = [
+                channel
+                for guild in self.guilds
+                for channel in guild.text_channels
+                if channel.name.casefold() == name.casefold()
+                and (scope_guild is None or guild.id == scope_guild)
+            ]
+            if len(matches) == 1:
+                selected.add(matches[0].id)
+        for guild in self.guilds:
+            for channel in guild.text_channels:
+                if channel.category_id in MODERATION_CATEGORY_IDS:
+                    selected.add(channel.id)
+        selected.update(LINK_REPOST_RULES)
+        selected.discard(MOD_LOG_ID)
+        return selected
+
+    def enqueue(self, message_id, edited=False, channel_id=None):
+        if channel_id is not None:
+            self.db.execute(
+                "INSERT OR REPLACE INTO nsfw_job_channels_v1 VALUES (?,?)",
+                (message_id, channel_id),
+            )
+        else:
+            self.db.execute(
+                "INSERT OR IGNORE INTO nsfw_job_channels_v1 VALUES (?,?)",
+                (message_id, CHANNEL_ID),
+            )
+        super().enqueue(message_id, edited=edited)
+
+    async def on_ready(self):
+        await super().on_ready()
+        selected = self.moderation_channel_ids()
+        descriptions = [
+            f"{channel_id}: {getattr(self.get_channel(channel_id), 'name', 'unresolved')}"
+            for channel_id in sorted(selected)
+        ]
+        body = (
+            "MODERATION CHANNEL CONFIGURATION\n"
+            "NSFW and hate-text moderation enabled for:\n"
+            + "\n".join(descriptions)
+            + f"\nNSFW/hate logs: {MOD_LOG_ID}"
+            + f"\nSpecial link-repost source ONLY: {LIVE_LINKS_ONLY_CHANNEL_ID}"
+            + f"\nOrdinary non-live link destination: {OUTPUT_CHANNEL_ID}"
+        )
+        if not MODERATION_CHANNELS.get("testy") and not any(
+            getattr(self.get_channel(channel_id), "name", "").casefold() == "testy"
+            for channel_id in selected
+        ):
+            body += (
+                "\nWARNING: testy could not be resolved uniquely. Set TESTY_CHANNEL_ID "
+                "to its numeric channel ID. It is not monitored until resolved."
+            )
+        with self.db:
+            self.record_event(uuid.uuid4().hex[:16], "configuration", body)
+        logger.info("%s", body)
+        await self.flush_logs()
+
+    async def on_message(self, message):
+        await super().on_message(message)
+        if (
+            message.channel.id in self.moderation_channel_ids()
+            and message.author.id != self.user.id
+        ):
+            self.enqueue(message.id, channel_id=message.channel.id)
+            self.troll_flagger.enqueue(message.channel.id, message.id)
+
+    async def on_raw_message_edit(self, payload):
+        await super().on_raw_message_edit(payload)
+        if payload.channel_id in self.moderation_channel_ids():
+            self.enqueue(
+                payload.message_id,
+                edited=True,
+                channel_id=payload.channel_id,
+            )
+            self.troll_flagger.enqueue(payload.channel_id, payload.message_id)
+
+    async def on_raw_message_delete(self, payload):
+        if payload.channel_id in self.moderation_channel_ids():
+            with self.db:
+                self.db.execute(
+                    "DELETE FROM jobs_v3 WHERE id=?", (payload.message_id,)
+                )
+
+    async def discover(self, channel):
+        prefix = f"nsfw_channel_{channel.id}_"
+        initial = discord.utils.time_snowflake(
+            discord.utils.utcnow() - timedelta(hours=24)
+        )
+        cursor = int(self.setting(prefix + "cursor", str(initial)))
+        async for message in channel.history(
+            limit=None,
+            after=discord.Object(id=cursor),
+            oldest_first=True,
+        ):
+            self.enqueue(message.id, channel_id=channel.id)
+            self.set_setting(prefix + "cursor", message.id)
+        before_id = int(self.setting(prefix + "audit", "0"))
+        count = 0
+        async for message in channel.history(
+            limit=100,
+            before=discord.Object(id=before_id) if before_id else None,
+            oldest_first=False,
+        ):
+            self.enqueue(message.id, channel_id=channel.id)
+            self.set_setting(prefix + "audit", message.id)
+            count += 1
+        if count < 100:
+            self.set_setting(prefix + "audit", 0)
+
+    async def recover_actions(self, channel):
+        rows = self.db.execute(
+            "SELECT case_id,report FROM actions_v5 "
+            "WHERE state IN ('planned','deleting','retry') ORDER BY updated"
+        ).fetchall()
+        matching = [
+            row for row in rows
+            if json.loads(row[1])["channel_id"] == channel.id
+        ]
+        for case_id, report in matching[:100]:
+            try:
+                async with self.message_lock:
+                    await self.execute_action(channel, case_id)
+            except Exception:
+                logger.exception(
+                    "NSFW recovery failed | channel=%s | case=%s", channel.id, case_id
+                )
+
+    @tasks.loop(minutes=SCAN_MINUTES)
+    async def scanner(self):
+        await self.refresh_adult_feed()
+        for channel_id in sorted(self.moderation_channel_ids()):
+            try:
+                channel = self.get_channel(channel_id) or await self.fetch_channel(channel_id)
+                member = channel.guild.me or await channel.guild.fetch_member(self.user.id)
+                permissions = channel.permissions_for(member)
+                if not all(
+                    getattr(permissions, key, False)
+                    for key in (
+                        "view_channel",
+                        "read_message_history",
+                        "manage_messages",
+                    )
+                ):
+                    raise PermissionError(
+                        f"Missing NSFW moderation permissions in {channel_id}"
+                    )
+                await self.recover_actions(channel)
+                try:
+                    await self.discover(channel)
+                except Exception:
+                    logger.exception("Channel discovery failed | channel=%s", channel_id)
+                jobs = self.db.execute(
+                    "SELECT j.id FROM jobs_v3 j LEFT JOIN nsfw_job_channels_v1 c "
+                    "ON c.message_id=j.id WHERE j.due<=? AND COALESCE(c.channel_id,?)=? "
+                    "ORDER BY j.id LIMIT 300",
+                    (time.time(), CHANNEL_ID, channel_id),
+                ).fetchall()
+                for (message_id,) in jobs:
+                    async with self.message_lock:
+                        await self.handle(channel, message_id)
+            except Exception as exc:
+                logger.exception("Channel NSFW scan failed | channel=%s", channel_id)
+                with self.db:
+                    self.record_event(
+                        uuid.uuid4().hex[:16],
+                        "channel_error",
+                        f"NSFW CHANNEL SCAN FAILED\nChannel ID: {channel_id}\n"
+                        f"{type(exc).__name__}: {str(exc)[:500]}",
+                    )
+        await self.flush_logs()
+
+    @scanner.before_loop
+    async def before_scan(self):
+        await self.wait_until_ready()
+        await asyncio.sleep(SCAN_MINUTES * 60)
+
+
 if __name__ == "__main__":
     token = os.getenv("DISCORD_TOKEN", "").strip()
     if not token:
         raise SystemExit("Set DISCORD_TOKEN in your hosting environment.")
-    TimeoutModerator().run(token, log_handler=None)
+    ChannelListModerator().run(token, log_handler=None)

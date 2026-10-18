@@ -50,9 +50,9 @@ LIVE_LINKS_SCAN_MINUTES = 15
 RELATED_COMMENT_WINDOW_SECONDS = 120
 VIOLATION_TIMEOUT_SECONDS = 86400
 
-POLICY_VERSION = "local-v11-embedded-media-and-nude-promotion"
+POLICY_VERSION = "local-v12-video-completeness-and-review-logs"
 LIVE_LINKS_POLICY = "live-links-only-v4-tiktok-resolution"
-TROLL_FLAG_POLICY = "troll-review-v6-related-comment-cleanup"
+TROLL_FLAG_POLICY = "troll-review-v7-racial-slur-triggers"
 
 ALLOWED_ACCOUNT = "unknownbear_"
 CAUSE_EXCEPTION_USERNAME = "thatzionistgirl"
@@ -700,6 +700,15 @@ TROLL_ADDITIONAL_ABUSE = (
 
 TROLL_PHRASES += TROLL_EXPANDED_ABUSE + TROLL_ADDITIONAL_ABUSE
 
+RACIAL_SLUR_PATTERNS = (
+    r'n[i1!][g69]{2}(?:[e3]r|a)s?',
+    r'k[i1!]kes?',
+    r'sp[i1!](?:c|ck)s?',
+    r'ch[i1!]nks?',
+)
+
+TROLL_PHRASES += RACIAL_SLUR_PATTERNS
+
 TROLL_PATTERNS = tuple(
     re.compile(r'\b' + pattern + r'\b', re.I)
     for pattern in TROLL_PHRASES
@@ -825,13 +834,21 @@ def section_repost_body(message):
         re.search(r'(?im)^Posted:\s*', content)
         and re.search(r'(?im)^Comments:\s*', content)
     ):
-        return content
+        return re.sub(
+            r'(?im)^[ \t]*Comments:[ \t]*(?:\r?\n[ \t]*)?'
+            r'No comments\.?[ \t]*(?:\r?\n|$)',
+            "",
+            content,
+        ).strip()
+
     comments = SECTION_URL_PATTERN.sub("", content).strip()
-    return (
+    body = (
         "\n".join(section_link_candidates(message))
-        + f"\nPosted: <@{message.author.id}>\nComments:\n"
-        + (comments or "No comments.")
+        + f"\nPosted: <@{message.author.id}>"
     )
+    if comments:
+        body += "\nComments:\n" + comments
+    return body
 
 
 def section_live_link_allowed(candidate):
@@ -954,7 +971,8 @@ async def resolve_tiktok_share(candidate):
     if len(TIKTOK_RESOLUTION_CACHE) >= 2048:
         TIKTOK_RESOLUTION_CACHE.clear()
     TIKTOK_RESOLUTION_CACHE[candidate] = (
-        time.monotonic() + (3600 if result != "unknown" else 60), result
+        time.monotonic() + (3600 if result != "unknown" else 60),
+        result,
     )
     return result
 
@@ -1050,8 +1068,9 @@ def trusted_embedded_media_url(url):
 class EmbeddedMediaDownload:
     size = 0
 
-    def __init__(self, url):
+    def __init__(self, url, expected_kind=None):
         self.url = url
+        self.expected_kind = expected_kind
 
     async def save(self, destination):
         import aiohttp
@@ -1069,6 +1088,8 @@ class EmbeddedMediaDownload:
                 content_type = response.headers.get("Content-Type", "").lower()
                 if not content_type.startswith(("image/", "video/")):
                     raise ValueError("Embedded URL did not return an image or video")
+                if self.expected_kind == "video" and not content_type.startswith("video/"):
+                    raise ValueError("Video URL returned a preview image instead of video")
                 if response.content_length and response.content_length > MAX_MEDIA_BYTES:
                     raise ValueError("Embedded media exceeds 25 MiB")
                 size = 0
@@ -1087,8 +1108,11 @@ def media_worker(source):
     from PIL import Image, ImageOps
 
     blocked = {
-        "FEMALE_BREAST_EXPOSED", "FEMALE_GENITALIA_EXPOSED",
-        "MALE_GENITALIA_EXPOSED", "ANUS_EXPOSED", "BUTTOCKS_EXPOSED",
+        "FEMALE_BREAST_EXPOSED",
+        "FEMALE_GENITALIA_EXPOSED",
+        "MALE_GENITALIA_EXPOSED",
+        "ANUS_EXPOSED",
+        "BUTTOCKS_EXPOSED",
     }
     detector = NudeDetector()
 
@@ -1111,7 +1135,11 @@ def media_worker(source):
                     image.thumbnail((1280, 1280))
                     target = folder / "image.jpg"
                     image.convert("RGB").save(target)
-                    return {"blocked": check(target), "complete": True}
+                    return {
+                        "blocked": check(target),
+                        "complete": True,
+                        "media_kind": "image",
+                    }
         probe = subprocess.run(
             [
                 "ffprobe", "-v", "error", "-show_entries",
@@ -1148,8 +1176,16 @@ def media_worker(source):
             raise ValueError("No video frames decoded")
         for frame in frames:
             if check(frame):
-                return {"blocked": True, "complete": True}
-        return {"blocked": False, "complete": True}
+                return {
+                    "blocked": True,
+                    "complete": True,
+                    "media_kind": "video",
+                }
+        return {
+            "blocked": False,
+            "complete": True,
+            "media_kind": "video",
+        }
 
 
 if (
@@ -1442,12 +1478,27 @@ class Moderator(discord.Client):
                 return "Nudity detected in attached media", []
             if not result["complete"]:
                 limitations.append(result.get("reason", "Incomplete media scan"))
+
         seen_media = set()
         for embed in message.embeds:
-            for media in (embed.video, embed.image, embed.thumbnail):
-                if not media or not media.url or media.url in seen_media:
+            if (
+                getattr(embed, "type", "") in {"video", "gifv"}
+                and not getattr(embed.video, "url", None)
+            ):
+                limitations.append("Video embed has no downloadable full-video URL")
+
+            for media_kind, media in (
+                ("video", embed.video),
+                ("image", embed.image),
+                ("image", embed.thumbnail),
+            ):
+                if (
+                    not media
+                    or not media.url
+                    or (media_kind, media.url) in seen_media
+                ):
                     continue
-                seen_media.add(media.url)
+                seen_media.add((media_kind, media.url))
                 candidates = list(dict.fromkeys(
                     value
                     for value in (getattr(media, "proxy_url", None), media.url)
@@ -1457,19 +1508,85 @@ class Moderator(discord.Client):
                     limitations.append("Embedded media host is not approved for download")
                     continue
                 completed = False
+                errors = []
                 for url in candidates:
                     try:
-                        result = await self.scan_attachment(EmbeddedMediaDownload(url))
+                        result = await self.scan_attachment(
+                            EmbeddedMediaDownload(url, expected_kind=media_kind)
+                        )
                         if result["blocked"]:
                             return "Nudity detected in linked or embedded media", []
-                        if result["complete"]:
+                        if result["complete"] and (
+                            media_kind != "video"
+                            or result.get("media_kind") == "video"
+                        ):
                             completed = True
                             break
-                    except Exception:
-                        logger.exception("Embedded media scan failed | message=%s", message.id)
+                        errors.append(
+                            result.get(
+                                "reason",
+                                "Media type or completeness not verified",
+                            )
+                        )
+                    except Exception as exc:
+                        errors.append(f"{type(exc).__name__}: {str(exc)[:180]}")
+                        logger.warning(
+                            "Embedded %s scan incomplete | message=%s | %s",
+                            media_kind, message.id, errors[-1],
+                        )
                 if not completed:
-                    limitations.append("Linked media could not be completely scanned")
+                    limitations.append(
+                        f"Embedded {media_kind} incomplete: "
+                        + "; ".join(errors)[:400]
+                    )
+
+        x_posts = []
+        for url in section_link_candidates(message):
+            try:
+                parsed = urlsplit(url if "://" in url else "https://" + url)
+                host = (parsed.hostname or "").lower().removeprefix("www.")
+                if host in {
+                    "x.com", "twitter.com", "vxtwitter.com", "fxtwitter.com",
+                    "fixupx.com", "fixvx.com",
+                } and re.fullmatch(r'/[^/]+/status/[0-9]+/?', parsed.path):
+                    x_posts.append(url)
+            except ValueError:
+                continue
+
+        if x_posts and not seen_media:
+            limitations.append(
+                "X status link has no accessible media; cannot verify whether it contains media"
+            )
+
+        if limitations:
+            self.record_incomplete_scan(message, limitations)
+
         return None, limitations
+
+    def record_incomplete_scan(self, message, limitations):
+        digest = self.fingerprint(message)
+        case_id = f"scan-review-{message.id}-{digest[:12]}"
+        details = "; ".join(sorted(set(limitations)))[:650]
+        body = (
+            f"MEDIA SCAN INCOMPLETE / REVIEW REQUIRED | Case {case_id}\n"
+            f"Server ID: {message.guild.id}\n"
+            f"Channel ID: {message.channel.id}\n"
+            f"Message ID: {message.id}\n"
+            f"Author ID: {message.author.id}\n"
+            f"Original message: {message.jump_url}\n"
+            f"Posted UTC: {message.created_at.isoformat()}\n"
+            f"Reported UTC: {discord.utils.utcnow().isoformat()}\n"
+            f"Details: {details}\n"
+            "NSFW status is unconfirmed. This is not a clean result. "
+            "No timeout is applied solely because media was inaccessible. "
+            "Live-link reposting is withheld. Retry scheduled; moderator review required. "
+            "No media is copied into this log."
+        )
+        with self.db:
+            self.record_event(case_id, "media_review", body)
+        logger.warning(
+            "Media requires review | message=%s | %s", message.id, limitations
+        )
 
     def record_event(self, case_id, stage, body):
         self.db.execute(
@@ -1661,7 +1778,7 @@ class Moderator(discord.Client):
                 )
                 self.db.execute(
                     "UPDATE jobs_v3 SET due=? WHERE id=?",
-                    (time.time() + 86400, message_id),
+                    (time.time() + SCAN_MINUTES * 60, message_id),
                 )
                 self.db.commit()
             else:

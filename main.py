@@ -46,26 +46,26 @@ TROLL_FLAG_CHANNEL_IDS = set(MODERATION_CHANNELS.values()) - {0}
 SCAN_MINUTES = 15
 LIVE_LINKS_SCAN_MINUTES = 15
 POLICY_VERSION = 'local-v13-visual-review-only'
-LIVE_LINKS_POLICY = 'live-links-only-v6-gif-sticker-emoji-exceptions'
-TROLL_FLAG_POLICY = 'troll-review-v7-racial-slur-triggers'
+LIVE_LINKS_POLICY = 'live-links-only-v7-direct-upload-routing-exception'
+UPLOAD_ROUTING_EXEMPT_CHANNEL_IDS = frozenset({1193977639417937976})
+TROLL_FLAG_POLICY = 'troll-review-v8-allowed-words'
+HATE_ALLOWED_WORDS = frozenset({'retarded', 'faggot'})
 
 ALLOWED_ACCOUNT = 'unknownbear_'
-MODERATION_EXEMPT_USERNAMES = frozenset({
-    'fanyuebaishuo', 'sprawl25', 'lambchop1015', 'theunknownbear_',
-})
-MODERATION_EXEMPT_USER_IDS = set()
+MODERATION_EXEMPT_USERS = {
+    1431418551658614909: 'millieshushies',
+    767875669735505942: 'fanyuebaishuo',
+    838407735455645726: 'sprawl25',
+    111349874225651712: 'lambchop1015',
+    1385766437934862416: 'theunknownbear_',
+}
+MODERATION_EXEMPT_USER_IDS = frozenset(MODERATION_EXEMPT_USERS)
 
 
 def moderation_exempt(user):
     if user is None:
         return False
-    user_id = getattr(user, 'id', None)
-    username = str(getattr(user, 'name', '')).casefold()
-    if username in MODERATION_EXEMPT_USERNAMES:
-        if user_id is not None:
-            MODERATION_EXEMPT_USER_IDS.add(user_id)
-        return True
-    return user_id in MODERATION_EXEMPT_USER_IDS
+    return getattr(user, 'id', None) in MODERATION_EXEMPT_USER_IDS
 
 
 CAUSE_EXCEPTION_USERNAME = 'thatzionistgirl'
@@ -837,6 +837,13 @@ def section_link_candidates(message):
     return found
 
 
+def section_upload_routing_exempt(message):
+    return (
+        message.channel.id in UPLOAD_ROUTING_EXEMPT_CHANNEL_IDS
+        and bool(message.attachments)
+    )
+
+
 def section_repost_body(message):
     content = message.content or ''
     if (
@@ -1121,6 +1128,8 @@ def troll_comment_findings(content):
     covered = -1
 
     for match in matches:
+        if match.group().casefold() in HATE_ALLOWED_WORDS:
+            continue
         if match.end() <= covered:
             continue
         covered = match.end()
@@ -1860,6 +1869,14 @@ class Moderator(discord.Client):
         message_id, digest, report_json, state = row
         report = json.loads(report_json)
 
+        if report.get('author_id') in MODERATION_EXEMPT_USER_IDS:
+            with self.db:
+                self.db.execute('UPDATE actions_v5 SET state=?,updated=? WHERE case_id=?',
+                                ('exempt', time.time(), case_id))
+                self.db.execute('DELETE FROM events_v5 WHERE case_id=? AND sent=0', (case_id,))
+            self.finish(message_id)
+            return
+
         if not VISUAL_AUTO_DELETE and report.get('reason', '').startswith('Nudity detected'):
             self.complete_action(case_id, 'cancelled',
                 'Pending visual-only deletion cancelled: human review now required.')
@@ -2251,6 +2268,7 @@ class LiveLinksOnlyGuard:
             LIVE_LINKS_POLICY,
             message.content,
             [e.url for e in message.embeds],
+            [attachment.id for attachment in message.attachments],
             str(message.edited_at),
         ]
         return hashlib.sha256(
@@ -2420,6 +2438,19 @@ class LiveLinksOnlyGuard:
             self.finish(message_id)
             return
 
+        if section_upload_routing_exempt(message):
+            if active:
+                report = json.loads(active[2])
+                report.pop('repost_body', None)
+                self.terminal(
+                    active[0], message_id, 'exempt', report,
+                    'Link routing cancelled: direct uploads remain in this channel. '
+                    'NSFW and hate moderation still apply.',
+                )
+                await self.flush(active[0])
+            self.finish(message_id)
+            return
+
         digest = self.digest(message)
 
         if active and active[1] != digest:
@@ -2549,6 +2580,16 @@ class LiveLinksOnlyGuard:
                 'missing',
                 report,
                 'Message disappeared before deletion; deleter unconfirmed.',
+            )
+            await self.flush(case_id)
+            return
+
+        if section_upload_routing_exempt(latest):
+            report.pop('repost_body', None)
+            self.terminal(
+                case_id, message_id, 'exempt', report,
+                'Link routing cancelled: message now contains a direct upload. '
+                'NSFW and hate moderation still apply.',
             )
             await self.flush(case_id)
             return
@@ -3592,6 +3633,12 @@ class ViolationTimeouts:
             until_at,
             state,
         ) = row
+
+        if member_id in MODERATION_EXEMPT_USER_IDS:
+            with self.db:
+                self.db.execute('UPDATE violation_timeouts_v1 SET state=? WHERE case_key=?', ('exempt', key))
+                self.db.execute('DELETE FROM timeout_reports_v1 WHERE case_key=? AND sent=0', (key,))
+            return
 
         def finish(stage, status):
             with self.db:

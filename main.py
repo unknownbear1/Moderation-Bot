@@ -45,7 +45,7 @@ TROLL_FLAG_CHANNEL_IDS = set(MODERATION_CHANNELS.values()) - {0}
 
 SCAN_MINUTES = 15
 LIVE_LINKS_SCAN_MINUTES = 15
-POLICY_VERSION = 'local-v12-video-completeness-and-review-logs'
+POLICY_VERSION = 'local-v13-visual-review-only'
 LIVE_LINKS_POLICY = 'live-links-only-v6-gif-sticker-emoji-exceptions'
 TROLL_FLAG_POLICY = 'troll-review-v7-racial-slur-triggers'
 
@@ -62,6 +62,7 @@ TIMEOUT_ENABLED_AT = time.time()
 MAX_MEDIA_BYTES = 25 * 1024 * 1024
 MAX_VIDEO_SECONDS = 120
 NUDITY_THRESHOLD = 0.65
+VISUAL_AUTO_DELETE = False
 
 ADULT_FEED_URL = 'https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/nsfw-onlydomains.txt'
 FEED_REFRESH_SECONDS = 86400
@@ -1158,10 +1159,11 @@ def media_worker(source):
     detector = NudeDetector()
 
     def check(path):
-        return any(
-            d['class'] in blocked and d['score'] >= NUDITY_THRESHOLD
+        return [
+            {'class': d['class'], 'score': round(float(d['score']), 4)}
             for d in detector.detect(str(path))
-        )
+            if d['class'] in blocked and d['score'] >= NUDITY_THRESHOLD
+        ]
 
     with tempfile.TemporaryDirectory() as folder:
         folder = Path(folder)
@@ -1178,7 +1180,9 @@ def media_worker(source):
                     image.thumbnail((1280, 1280))
                     target = folder / 'image.jpg'
                     image.convert('RGB').save(target)
-                    return {'blocked': check(target), 'complete': True, 'media_kind': 'image'}
+                    findings = check(target)
+                    return {'blocked': bool(findings), 'detections': findings,
+                            'complete': True, 'media_kind': 'image'}
 
         probe = subprocess.run(
             [
@@ -1219,8 +1223,10 @@ def media_worker(source):
             raise ValueError('No video frames decoded')
 
         for frame in frames:
-            if check(frame):
-                return {'blocked': True, 'complete': True, 'media_kind': 'video'}
+            findings = check(frame)
+            if findings:
+                return {'blocked': True, 'detections': findings,
+                        'frame': frame.name, 'complete': True, 'media_kind': 'video'}
 
         return {'blocked': False, 'complete': True, 'media_kind': 'video'}
 
@@ -1629,7 +1635,9 @@ class Moderator(discord.Client):
 
             result = await self.scan_attachment(attachment)
             if result['blocked']:
-                return 'Nudity detected in attached media', []
+                if VISUAL_AUTO_DELETE:
+                    return 'Nudity detected in attached media', []
+                limitations.append(self.visual_review_detail(result, 'attached media'))
             if not result['complete']:
                 limitations.append(result.get('reason', 'Incomplete media scan'))
 
@@ -1657,7 +1665,9 @@ class Moderator(discord.Client):
                         result = await self.scan_attachment(
                             EmbeddedMediaDownload(url, expected_kind=media_kind))
                         if result['blocked']:
-                            return 'Nudity detected in linked or embedded media', []
+                            if VISUAL_AUTO_DELETE:
+                                return 'Nudity detected in linked or embedded media', []
+                            limitations.append(self.visual_review_detail(result, 'linked or embedded media'))
                         if result['complete'] and (
                             media_kind != 'video' or result.get('media_kind') == 'video'
                         ):
@@ -1692,6 +1702,14 @@ class Moderator(discord.Client):
 
         return None, limitations
 
+    def visual_review_detail(self, result, source):
+        findings = result.get('detections') or []
+        details = ', '.join(
+            f"{item.get('class', 'unknown')} score={float(item.get('score', 0)):.3f}"
+            for item in findings[:5]
+        ) or 'Detector details unavailable'
+        return f'Visual detection requires human review ({source}): {details}. Automatic deletion and timeout disabled for visual detections.'
+
     def record_incomplete_scan(self, message, limitations):
         digest = self.fingerprint(message)
         case_id = f'scan-review-{message.id}-{digest[:12]}'
@@ -1704,7 +1722,7 @@ class Moderator(discord.Client):
             f'Reported UTC: {discord.utils.utcnow().isoformat()}\n'
             f'Details: {"; ".join(sorted(set(limitations)))[:650]}\n'
             'NSFW status is unconfirmed. This is not a clean result. '
-            'No timeout is applied solely because media was inaccessible. '
+            'No deletion or timeout is applied solely for inaccessible media or a review-only visual detection. '
             'Live-link reposting is withheld. Retry scheduled; moderator review required. '
             'No media is copied into this log.'
         )
@@ -1819,6 +1837,13 @@ class Moderator(discord.Client):
 
         message_id, digest, report_json, state = row
         report = json.loads(report_json)
+
+        if not VISUAL_AUTO_DELETE and report.get('reason', '').startswith('Nudity detected'):
+            self.complete_action(case_id, 'cancelled',
+                'Pending visual-only deletion cancelled: human review now required.')
+            self.finish(message_id)
+            await self.flush_logs(case_id)
+            return
 
         await self.flush_logs(case_id)
 
@@ -3535,6 +3560,10 @@ class ViolationTimeouts:
                     until_at,
                     status,
                 )
+
+        if not VISUAL_AUTO_DELETE and reason.startswith('NSFW violation: Nudity detected'):
+            finish('cancelled', 'Visual-only timeout cancelled: human review now required. Previously applied timeouts are not automatically changed.')
+            return
 
         if state == 'attempting':
             finish(

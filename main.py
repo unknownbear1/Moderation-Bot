@@ -46,7 +46,7 @@ TROLL_FLAG_CHANNEL_IDS = set(MODERATION_CHANNELS.values()) - {0}
 SCAN_MINUTES = 15
 LIVE_LINKS_SCAN_MINUTES = 15
 POLICY_VERSION = 'local-v12-video-completeness-and-review-logs'
-LIVE_LINKS_POLICY = 'live-links-only-v4-tiktok-resolution'
+LIVE_LINKS_POLICY = 'live-links-only-v5-gif-routing-exception'
 TROLL_FLAG_POLICY = 'troll-review-v7-racial-slur-triggers'
 
 ALLOWED_ACCOUNT = 'unknownbear_'
@@ -989,7 +989,45 @@ async def resolve_tiktok_share(candidate):
     return result
 
 
+def section_gif_link_allowed(candidate):
+    try:
+        parsed = urlsplit(
+            candidate if '://' in candidate else 'https://' + candidate
+        )
+        if parsed.scheme.lower() not in {'http', 'https'}:
+            return False
+        if parsed.username is not None or parsed.password is not None:
+            return False
+        if parsed.port not in (
+            None, 443 if parsed.scheme.lower() == 'https' else 80
+        ):
+            return False
+        host = (parsed.hostname or '').casefold().rstrip('.')
+        path = unquote(parsed.path)
+        if '\\' in path or any(part in {'.', '..'} for part in path.split('/')):
+            return False
+        rules = {
+            'klipy.com': r'/gifs/[A-Za-z0-9_-]+/?',
+            'www.klipy.com': r'/gifs/[A-Za-z0-9_-]+/?',
+            'tenor.com': r'/view/[A-Za-z0-9_-]+/?',
+            'www.tenor.com': r'/view/[A-Za-z0-9_-]+/?',
+            'giphy.com': r'/gifs/[A-Za-z0-9_-]+/?',
+            'www.giphy.com': r'/gifs/[A-Za-z0-9_-]+/?',
+            'media.giphy.com': r'/media/[A-Za-z0-9_/-]+\.gif',
+            'i.giphy.com': r'/(?:media/)?[A-Za-z0-9_/-]+\.gif',
+            'media.tenor.com': r'/[A-Za-z0-9_/-]+\.gif',
+            'cdn.discordapp.com': r'/attachments/[0-9]+/[0-9]+/[^/]+\.gif',
+            'media.discordapp.net': r'/attachments/[0-9]+/[0-9]+/[^/]+\.gif',
+        }
+        rule = rules.get(host)
+        return bool(rule and re.fullmatch(rule, path, flags=re.IGNORECASE))
+    except (ValueError, UnicodeError):
+        return False
+
+
 async def section_link_allowed_resolved(candidate):
+    if section_gif_link_allowed(candidate):
+        return True
     kind = tiktok_link_kind(candidate)
     if kind == 'other':
         return section_live_link_allowed(candidate)

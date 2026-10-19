@@ -46,7 +46,7 @@ TROLL_FLAG_CHANNEL_IDS = set(MODERATION_CHANNELS.values()) - {0}
 SCAN_MINUTES = 15
 LIVE_LINKS_SCAN_MINUTES = 15
 POLICY_VERSION = 'local-v12-video-completeness-and-review-logs'
-LIVE_LINKS_POLICY = 'live-links-only-v5-gif-routing-exception'
+LIVE_LINKS_POLICY = 'live-links-only-v6-gif-sticker-emoji-exceptions'
 TROLL_FLAG_POLICY = 'troll-review-v7-racial-slur-triggers'
 
 ALLOWED_ACCOUNT = 'unknownbear_'
@@ -1025,8 +1025,33 @@ def section_gif_link_allowed(candidate):
         return False
 
 
+def section_expression_link_allowed(candidate):
+    try:
+        parsed = urlsplit(
+            candidate if '://' in candidate else 'https://' + candidate
+        )
+        if parsed.scheme.lower() not in {'http', 'https'}:
+            return False
+        if parsed.username is not None or parsed.password is not None:
+            return False
+        if parsed.port not in (
+            None, 443 if parsed.scheme.lower() == 'https' else 80
+        ):
+            return False
+        host = (parsed.hostname or '').casefold().rstrip('.')
+        if host not in {'cdn.discordapp.com', 'media.discordapp.net'}:
+            return False
+        return bool(re.fullmatch(
+            r'/(?:emojis/[0-9]+\.(?:png|webp|gif)'
+            r'|stickers/[0-9]+\.(?:png|webp|gif|json))',
+            unquote(parsed.path), flags=re.IGNORECASE,
+        ))
+    except (ValueError, UnicodeError):
+        return False
+
+
 async def section_link_allowed_resolved(candidate):
-    if section_gif_link_allowed(candidate):
+    if section_gif_link_allowed(candidate) or section_expression_link_allowed(candidate):
         return True
     kind = tiktok_link_kind(candidate)
     if kind == 'other':

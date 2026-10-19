@@ -50,6 +50,24 @@ LIVE_LINKS_POLICY = 'live-links-only-v6-gif-sticker-emoji-exceptions'
 TROLL_FLAG_POLICY = 'troll-review-v7-racial-slur-triggers'
 
 ALLOWED_ACCOUNT = 'unknownbear_'
+MODERATION_EXEMPT_USERNAMES = frozenset({
+    'fanyuebaishuo', 'sprawl25', 'lambchop1015', 'theunknownbear_',
+})
+MODERATION_EXEMPT_USER_IDS = set()
+
+
+def moderation_exempt(user):
+    if user is None:
+        return False
+    user_id = getattr(user, 'id', None)
+    username = str(getattr(user, 'name', '')).casefold()
+    if username in MODERATION_EXEMPT_USERNAMES:
+        if user_id is not None:
+            MODERATION_EXEMPT_USER_IDS.add(user_id)
+        return True
+    return user_id in MODERATION_EXEMPT_USER_IDS
+
+
 CAUSE_EXCEPTION_USERNAME = 'thatzionistgirl'
 CAUSE_EXCEPTION_USER_ID = int(
     os.getenv('CAUSE_EXCEPTION_USER_ID', '0').strip() or '0'
@@ -1431,6 +1449,8 @@ class Moderator(discord.Client):
         )
 
     async def on_message(self, message):
+        if moderation_exempt(message.author):
+            return
         if message.channel.id == CHANNEL_ID and message.author.id != self.user.id:
             self.enqueue(message.id)
 
@@ -1612,6 +1632,8 @@ class Moderator(discord.Client):
             )
 
     async def inspect(self, message):
+        if moderation_exempt(message.author):
+            return None, []
         reason = text_violation(
             self.message_text(message),
             self.feed_blocked_domain,
@@ -1845,8 +1867,6 @@ class Moderator(discord.Client):
             await self.flush_logs(case_id)
             return
 
-        await self.flush_logs(case_id)
-
         try:
             latest = await channel.fetch_message(message_id)
         except discord.NotFound:
@@ -1860,6 +1880,15 @@ class Moderator(discord.Client):
             await self.flush_logs(case_id)
             return
 
+        if moderation_exempt(latest.author):
+            with self.db:
+                self.db.execute('UPDATE actions_v5 SET state=?,updated=? WHERE case_id=?',
+                                ('exempt', time.time(), case_id))
+                self.db.execute('DELETE FROM events_v5 WHERE case_id=? AND sent=0', (case_id,))
+            self.finish(message_id)
+            return
+
+        await self.flush_logs(case_id)
         if self.fingerprint(latest) != digest:
             self.complete_action(
                 case_id,
@@ -1956,7 +1985,7 @@ class Moderator(discord.Client):
                 return
 
             message = await channel.fetch_message(message_id)
-            if message.author.id == self.user.id:
+            if moderation_exempt(message.author) or message.author.id == self.user.id:
                 self.finish(message_id)
                 return
 
@@ -2383,7 +2412,11 @@ class LiveLinksOnlyGuard:
                 self.finish(message_id)
             return
 
-        if message.author.id == self.bot.user.id:
+        if moderation_exempt(message.author) or message.author.id == self.bot.user.id:
+            if active and moderation_exempt(message.author):
+                with self.db:
+                    self.db.execute('UPDATE section_cases_v1 SET state=? WHERE case_id=?', ('exempt', active[0]))
+                    self.db.execute('DELETE FROM section_events_v1 WHERE case_id=? AND sent=0', (active[0],))
             self.finish(message_id)
             return
 
@@ -2774,6 +2807,9 @@ class CauseAwareLiveLinksOnlyGuard(LiveLinksOnlyGuard):
             and is_cause_announcement(message)
         )
 
+        if moderation_exempt(message.author):
+            return await super().process(channel, message_id)
+
         if qualifies and text_violation(
             self.bot.message_text(message),
             self.bot.feed_blocked_domain,
@@ -2836,6 +2872,8 @@ class LiveSectionModerator(Moderator):
             self.live_link_guard.loop.start()
 
     async def on_message(self, message):
+        if moderation_exempt(message.author):
+            return
         await super().on_message(message)
         if message.author.id != self.user.id:
             self.live_link_guard.enqueue(
@@ -3005,7 +3043,7 @@ class TrollFlagger:
 
         findings = (
             []
-            if message.author.id == self.bot.user.id
+            if moderation_exempt(message.author) or message.author.id == self.bot.user.id
             else troll_comment_findings(message.content)
         )
 
@@ -3216,6 +3254,10 @@ class ReliableTrollFlagger(TrollFlagger):
             original = await channel.fetch_message(message_id)
         except discord.NotFound:
             return await super().check(channel, message_id)
+        if moderation_exempt(original.author):
+            with self.db:
+                self.db.execute('DELETE FROM troll_jobs_v1 WHERE message_id=?', (message_id,))
+            return
         await super().check(channel, message_id)
         direct = any(
             label.startswith('Possible direct statement')
@@ -3250,7 +3292,7 @@ class ReliableTrollFlagger(TrollFlagger):
             limit=None, after=start - timedelta(milliseconds=1),
             before=end + timedelta(milliseconds=1), oldest_first=True,
         ):
-            if (message.author.id != author_id or message.id == anchor_id
+            if (moderation_exempt(message.author) or message.author.id != author_id or message.id == anchor_id
                     or not start <= message.created_at <= end):
                 continue
             existing = self.db.execute(
@@ -3324,7 +3366,6 @@ class ReliableTrollFlagger(TrollFlagger):
             if not current:
                 return
             case_id, message_id, original, state = current
-            await self.safe_flush_logs(case_id)
             if state != 'pending':
                 return
             related = self.db.execute(
@@ -3333,6 +3374,12 @@ class ReliableTrollFlagger(TrollFlagger):
             ).fetchone()
             try:
                 latest = await channel.fetch_message(message_id)
+                if moderation_exempt(latest.author):
+                    with self.db:
+                        self.db.execute('UPDATE hate_deletions_v1 SET state=? WHERE case_id=?', ('exempt', case_id))
+                        self.db.execute('DELETE FROM hate_deletion_logs_v1 WHERE case_id=? AND sent=0', (case_id,))
+                    return
+                await self.safe_flush_logs(case_id)
                 if related:
                     eligible = latest.author.id == related[1]
                 else:
@@ -3423,6 +3470,8 @@ class TrollAwareModerator(LiveSectionModerator):
         self.troll_flagger.deletion_worker.start()
 
     async def on_message(self, message):
+        if moderation_exempt(message.author):
+            return
         await super().on_message(message)
         if message.author.id != self.user.id:
             self.troll_flagger.enqueue(
@@ -3592,6 +3641,11 @@ class ViolationTimeouts:
                 return
 
             member = await guild.fetch_member(member_id)
+            if moderation_exempt(member):
+                with self.db:
+                    self.db.execute('UPDATE violation_timeouts_v1 SET state=? WHERE case_key=?', ('exempt', key))
+                    self.db.execute('DELETE FROM timeout_reports_v1 WHERE case_key=? AND sent=0', (key,))
+                return
             me = guild.me or await guild.fetch_member(self.bot.user.id)
 
             if (
@@ -3746,6 +3800,8 @@ class TimeoutModerator(TrollAwareModerator):
         )
 
     def schedule_violation_timeout(self, key, message, reason):
+        if moderation_exempt(message.author):
+            return
         if message.created_at.timestamp() < self.timeout_enabled_at:
             return
 
@@ -3863,6 +3919,8 @@ class ChannelListModerator(TimeoutModerator):
         await self.flush_logs()
 
     async def on_message(self, message):
+        if moderation_exempt(message.author):
+            return
         await super().on_message(message)
         if message.channel.id in self.moderation_channel_ids() and message.author.id != self.user.id:
             self.enqueue(message.id, channel_id=message.channel.id)

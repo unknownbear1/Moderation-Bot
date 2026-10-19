@@ -15,64 +15,63 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qsl, unquote, urljoin, urlsplit
 
-CHANNEL_ID = 1560149527984476180
-MOD_LOG_ID = 1560149552168837181
-
+CHANNEL_ID = 1193977639417937976
+MOD_LOG_ID = 1561586130862735470
+OUTPUT_CHANNEL_ID = 1516225222439735446
 MODERATION_CHANNELS = {
-    "test": 1560149527984476180,
-    "testy": int(os.getenv("TESTY_CHANNEL_ID", "0") or "0"),
+    'live_links': CHANNEL_ID,
+    'repost_output': OUTPUT_CHANNEL_ID,
+    'channel_03': 1296257468577611856,
+    'channel_04': 1296271765957378049,
+    'channel_05': 1296926070649524375,
+    'channel_06': 1296257558142652426,
+    'channel_07': 1300335490142179331,
+    'channel_08': 1419026528154550452,
+    'channel_09': 1432855383482962000,
+    'channel_10': 1513236368766140696,
+    'channel_11': 1521599211433365616,
 }
-
 MODERATION_CATEGORY_IDS = set()
-
 LINK_REPOST_RULES = {
-    1560149527984476180: {
-        "output_channel_id": 1560525700908322917,
-        "source_permissions": (
-            "view_channel",
-            "read_message_history",
-            "manage_messages",
-        ),
-        "output_permissions": (
-            "view_channel",
-            "send_messages",
-            "embed_links",
-        ),
+    CHANNEL_ID: {
+        'output_channel_id': OUTPUT_CHANNEL_ID,
+        'source_permissions': ('view_channel', 'read_message_history', 'manage_messages'),
+        'output_permissions': ('view_channel', 'send_messages', 'embed_links'),
     },
 }
-
 LIVE_LINKS_ONLY_CHANNEL_ID = next(iter(LINK_REPOST_RULES))
-OUTPUT_CHANNEL_ID = LINK_REPOST_RULES[LIVE_LINKS_ONLY_CHANNEL_ID]["output_channel_id"]
+OUTPUT_CHANNEL_ID = LINK_REPOST_RULES[LIVE_LINKS_ONLY_CHANNEL_ID]['output_channel_id']
 TROLL_FLAG_CHANNEL_IDS = set(MODERATION_CHANNELS.values()) - {0}
 
 SCAN_MINUTES = 15
 LIVE_LINKS_SCAN_MINUTES = 15
-RELATED_COMMENT_WINDOW_SECONDS = 120
+POLICY_VERSION = 'local-v12-video-completeness-and-review-logs'
+LIVE_LINKS_POLICY = 'live-links-only-v4-tiktok-resolution'
+TROLL_FLAG_POLICY = 'troll-review-v7-racial-slur-triggers'
+
+ALLOWED_ACCOUNT = 'unknownbear_'
+CAUSE_EXCEPTION_USERNAME = 'thatzionistgirl'
+CAUSE_EXCEPTION_USER_ID = int(
+    os.getenv('CAUSE_EXCEPTION_USER_ID', '0').strip() or '0'
+)
+CAUSE_EXCEPTION_POLICY = 'cause-announcement-v1'
+
 VIOLATION_TIMEOUT_SECONDS = 86400
-
-POLICY_VERSION = "local-v12-video-completeness-and-review-logs"
-LIVE_LINKS_POLICY = "live-links-only-v4-tiktok-resolution"
-TROLL_FLAG_POLICY = "troll-review-v7-racial-slur-triggers"
-
-ALLOWED_ACCOUNT = "unknownbear_"
-CAUSE_EXCEPTION_USERNAME = "thatzionistgirl"
-CAUSE_EXCEPTION_USER_ID = int(os.getenv("CAUSE_EXCEPTION_USER_ID", "0").strip() or "0")
-CAUSE_EXCEPTION_POLICY = "cause-announcement-v1"
-
 TIMEOUT_ENABLED_AT = time.time()
+
 MAX_MEDIA_BYTES = 25 * 1024 * 1024
 MAX_VIDEO_SECONDS = 120
 NUDITY_THRESHOLD = 0.65
 
-ADULT_FEED_URL = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/nsfw-onlydomains.txt"
+ADULT_FEED_URL = 'https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/nsfw-onlydomains.txt'
 FEED_REFRESH_SECONDS = 86400
 FEED_MAX_BYTES = 5 * 1024 * 1024
 
 FEED_EXCLUDED_ROOTS = {
-    "discord.com", "discord.gg", "discordapp.com", "discordapp.net",
-    "x.com", "twitter.com", "tiktok.com", "instagram.com", "facebook.com",
-    "youtube.com", "youtu.be", "reddit.com", "google.com", "wikipedia.org",
-    "github.com",
+    'discord.com', 'discord.gg', 'discordapp.com', 'discordapp.net',
+    'x.com', 'twitter.com', 'tiktok.com', 'instagram.com',
+    'facebook.com', 'youtube.com', 'youtu.be', 'reddit.com',
+    'google.com', 'wikipedia.org', 'github.com',
 }
 
 ADULT_DOMAINS = set("""
@@ -199,8 +198,8 @@ yoursexyteens.com yuvutu.com zbporn.com zoggy.com zooxtaboo.com
 """.split())
 
 SOCIAL_HOSTS = {
-    "www.instagram.com", "x.com", "tiktok.com", "instagram.com",
-    "www.tiktok.com", "www.twitter.com", "www.x.com", "twitter.com",
+    'www.instagram.com', 'x.com', 'tiktok.com', 'instagram.com',
+    'www.tiktok.com', 'www.twitter.com', 'www.x.com', 'twitter.com',
 }
 
 TEXT_PATTERNS = tuple(re.compile(pattern) for pattern in (
@@ -325,7 +324,7 @@ TEXT_PATTERNS = tuple(re.compile(pattern) for pattern in (
     r'\b(?:hentai|doujinshi|erotica) (?:porn|sex videos|sex clips|xxx|nudes)\b',
     r'\b(?:join|visit|watch|buy) (?:my |our |the )?(?:live masturbation show|nude cam show|naked cam show|live sex show)\b',
     r'\b(?:let me|i want to|i wanna|please) (?:lick|suck|stroke|ride) (?:your|his|her) (?:dick|cock|pussy|clit|balls)\b',
-    r'\b(?:i want|i wanna|let me|please) (?:put|stick|slide) (?:my|your|his) (?:dick|cock) (?:in|inside|into)\b',
+    r'\b(?:i want|i wanna|please|let me) (?:put|stick|slide) (?:my|your|his) (?:dick|cock) (?:in|inside|into)\b',
     r'\b(?:finger|fingering) (?:me|her) (?:on cam|on camera|until i cum|until she cums)\b',
     r'\b(?:show|send)(?: me)? (?:your |her |his )?(?:masturbation video|masturbation clip|sex tape|cum video|orgasm video)\b',
     r'\b(?:i am|im|i m|she is|he is) (?:naked|nude) (?:on cam|on camera|on webcam|for you)\b',
@@ -528,16 +527,6 @@ TEXT_PATTERNS = tuple({
     )
 }.values())
 
-TEXT_PATTERNS += tuple(re.compile(pattern) for pattern in (
-    r'\b(?:link to|see|watch|unlock|get|find) (?:the |my |a )?'
-    r'(?:free |full |uncensored )?(?:nude|naked|nuddy|nudd[yi]e|nudie) '
-    r'(?:version|content|videos?|pics?|photos?)\b',
-    r'\b(?:free |full |uncensored )?(?:nude|naked|nuddy|nudie) '
-    r'(?:version|content|videos?|pics?|photos?) '
-    r'(?:is |available )?(?:in|on|at|through) (?:my |the )?'
-    r'(?:profile|bio|page|link)\b',
-))
-
 HOST_PATTERN = re.compile(
     r'(?<![\w@-])(?:[a-z0-9](?:[a-z0-9-]{0,62})\.)+[a-z]{2,63}(?![\w-])',
     re.I,
@@ -545,30 +534,30 @@ HOST_PATTERN = re.compile(
 URL_PATTERN = re.compile(r'https?://[^\s<>]+', re.I)
 
 LIVE_LINK_HOST_RULES = {
-    "tiktok.com": r'/@[a-zA-Z0-9._]{1,24}/live/?',
-    "www.tiktok.com": r'/@[a-zA-Z0-9._]{1,24}/live/?',
-    "m.tiktok.com": r'/@[a-zA-Z0-9._]{1,24}/live/?',
-    "youtube.com": r'/(?:@[^/]+|channel/[a-zA-Z0-9_-]+|c/[^/]+|user/[^/]+)/live/?',
-    "www.youtube.com": r'/(?:@[^/]+|channel/[a-zA-Z0-9_-]+|c/[^/]+|user/[^/]+)/live/?',
-    "m.youtube.com": r'/(?:@[^/]+|channel/[a-zA-Z0-9_-]+|c/[^/]+|user/[^/]+)/live/?',
-    "instagram.com": r'/[a-zA-Z0-9._]+/live/?',
-    "www.instagram.com": r'/[a-zA-Z0-9._]+/live/?',
-    "facebook.com": r'/[a-zA-Z0-9.]+/live/?',
-    "www.facebook.com": r'/[a-zA-Z0-9.]+/live/?',
-    "twitch.tv": r'/[a-zA-Z0-9_]{1,25}/?',
-    "www.twitch.tv": r'/[a-zA-Z0-9_]{1,25}/?',
+    'tiktok.com': r'/@[a-zA-Z0-9._]{1,24}/live/?',
+    'www.tiktok.com': r'/@[a-zA-Z0-9._]{1,24}/live/?',
+    'm.tiktok.com': r'/@[a-zA-Z0-9._]{1,24}/live/?',
+    'youtube.com': r'/(?:@[^/]+|channel/[a-zA-Z0-9_-]+|c/[^/]+|user/[^/]+)/live/?',
+    'www.youtube.com': r'/(?:@[^/]+|channel/[a-zA-Z0-9_-]+|c/[^/]+|user/[^/]+)/live/?',
+    'm.youtube.com': r'/(?:@[^/]+|channel/[a-zA-Z0-9_-]+|c/[^/]+|user/[^/]+)/live/?',
+    'instagram.com': r'/[a-zA-Z0-9._]+/live/?',
+    'www.instagram.com': r'/[a-zA-Z0-9._]+/live/?',
+    'facebook.com': r'/[a-zA-Z0-9.]+/live/?',
+    'www.facebook.com': r'/[a-zA-Z0-9.]+/live/?',
+    'twitch.tv': r'/[a-zA-Z0-9_]{1,25}/?',
+    'www.twitch.tv': r'/[a-zA-Z0-9_]{1,25}/?',
 }
 
 LIVE_LINK_SAFE_QUERY_KEYS = {
-    "is_from_webapp", "sender_device", "web_id", "lang", "enter_from",
-    "share_app_id", "share_link_id", "timestamp", "u_code", "user_id",
-    "utm_source", "utm_medium", "utm_campaign", "_r", "_t", "si",
+    'is_from_webapp', 'sender_device', 'web_id', 'lang', 'enter_from',
+    'share_app_id', 'share_link_id', 'timestamp', 'u_code', 'user_id',
+    'utm_source', 'utm_medium', 'utm_campaign', '_r', '_t', 'si',
 }
 
 TWITCH_RESERVED_PATHS = {
-    "directory", "videos", "downloads", "login", "signup", "settings",
-    "subscriptions", "inventory", "wallet", "search", "jobs", "p",
-    "turbo", "prime", "about", "friends", "following", "products",
+    'directory', 'videos', 'downloads', 'login', 'signup', 'settings',
+    'subscriptions', 'inventory', 'wallet', 'search', 'jobs', 'p',
+    'turbo', 'prime', 'about', 'friends', 'following', 'products',
 }
 
 SECTION_URL_PATTERN = re.compile(
@@ -607,16 +596,10 @@ CAUSE_ACTION_PATTERN = re.compile(
 )
 
 TIKTOK_SHARE_HOSTS = frozenset({
-    "tiktok.com", "www.tiktok.com", "m.tiktok.com",
-    "vm.tiktok.com", "vt.tiktok.com",
+    'tiktok.com', 'www.tiktok.com', 'm.tiktok.com',
+    'vm.tiktok.com', 'vt.tiktok.com',
 })
 TIKTOK_RESOLUTION_CACHE = {}
-
-EMBEDDED_MEDIA_HOSTS = frozenset({
-    "pbs.twimg.com", "video.twimg.com",
-    "images-ext-1.discordapp.net", "images-ext-2.discordapp.net",
-    "media.discordapp.net", "cdn.discordapp.com",
-})
 
 TROLL_PHRASES = (
     r'trump supporters (?:are|are in|belong to) (?:a |the )?cult',
@@ -742,29 +725,36 @@ TROLL_ENDORSEMENT = re.compile(
 
 
 def normalize(text):
-    text = unicodedata.normalize("NFKC", text).casefold()
-    return "".join(c for c in text if unicodedata.category(c) != "Cf")
+    text = unicodedata.normalize('NFKC', text).casefold()
+    return ''.join(c for c in text if unicodedata.category(c) != 'Cf')
 
 
 def allowed_account_url(url):
     try:
         parsed = urlsplit(url)
-        segments = unquote(parsed.path).strip("/").split("/")
+        segments = unquote(parsed.path).strip('/').split('/')
         return (
-            (parsed.hostname or "").lower().rstrip(".") in SOCIAL_HOSTS
+            (parsed.hostname or '').lower().rstrip('.') in SOCIAL_HOSTS
             and bool(segments)
-            and segments[0].lstrip("@").casefold() == ALLOWED_ACCOUNT
+            and segments[0].lstrip('@').casefold() == ALLOWED_ACCOUNT
         )
     except ValueError:
         return False
 
 
 def blocked_domain(text, domain_lookup=None):
-    text = re.sub(r'\s*(?:\[\.\]|\(\.\)|\{\.\})\s*', ".", normalize(text))
+    text = re.sub(
+        r'\s*(?:\[\.\]|\(\.\)|\{\.\})\s*',
+        '.',
+        normalize(text),
+    )
     for candidate in HOST_PATTERN.findall(text):
-        host = candidate.lower().rstrip(".")
+        host = candidate.lower().rstrip('.')
         if (
-            any(host == domain or host.endswith("." + domain) for domain in ADULT_DOMAINS)
+            any(
+                host == domain or host.endswith('.' + domain)
+                for domain in ADULT_DOMAINS
+            )
             or (domain_lookup is not None and domain_lookup(host))
         ):
             return host
@@ -773,26 +763,26 @@ def blocked_domain(text, domain_lookup=None):
 
 def text_violation(text, domain_lookup=None):
     text = URL_PATTERN.sub(
-        lambda match: "" if allowed_account_url(match.group()) else match.group(),
+        lambda match: '' if allowed_account_url(match.group()) else match.group(),
         normalize(text),
     )
     host = blocked_domain(text, domain_lookup)
     if host:
-        return "Blocked adult-site link: " + host
-    text = "".join(
-        c for c in unicodedata.normalize("NFKD", text)
+        return 'Blocked adult-site link: ' + host
+    text = ''.join(
+        c for c in unicodedata.normalize('NFKD', text)
         if not unicodedata.combining(c)
     )
-    text = re.sub(r'\s+', " ", re.sub(r'[^a-z0-9\s]', " ", text))
+    text = re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9\s]', ' ', text))
     if any(pattern.search(text) for pattern in TEXT_PATTERNS):
-        return "Explicit sexual phrase detected"
+        return 'Explicit sexual phrase detected'
     return None
 
 
 def parse_adult_feed(text):
     domains = set()
     for line in text.splitlines():
-        domain = line.strip().lower().rstrip(".")
+        domain = line.strip().lower().rstrip('.')
         if (
             len(domain) <= 253
             and HOST_PATTERN.fullmatch(domain)
@@ -800,26 +790,26 @@ def parse_adult_feed(text):
         ):
             domains.add(domain)
     if not 1000 <= len(domains) <= 300000:
-        raise ValueError("Adult domain feed failed validation")
+        raise ValueError('Adult domain feed failed validation')
     return domains
 
 
 def section_link_candidates(message):
-    texts = [message.content or ""]
+    texts = [message.content or '']
     texts.extend(embed.url for embed in message.embeds if embed.url)
     found = []
     seen = set()
     for text in texts:
-        text = unicodedata.normalize("NFKC", text)
-        text = "".join(c for c in text if unicodedata.category(c) != "Cf")
-        text = re.sub(r'\s*(?:\[\.\]|\(\.\)|\{\.\})\s*', ".", text)
+        text = unicodedata.normalize('NFKC', text)
+        text = ''.join(c for c in text if unicodedata.category(c) != 'Cf')
+        text = re.sub(r'\s*(?:\[\.\]|\(\.\)|\{\.\})\s*', '.', text)
         for match in SECTION_URL_PATTERN.finditer(text):
             candidate = match.group().rstrip("'\"`.,;:!?)]}")
-            if "://" not in candidate:
-                suffix = candidate.split("/")[0].rsplit(".", 1)[-1].lower()
+            if '://' not in candidate:
+                suffix = candidate.split('/')[0].rsplit('.', 1)[-1].lower()
                 if suffix in {
-                    "pdf", "txt", "doc", "docx", "xlsx", "png",
-                    "jpg", "jpeg", "gif", "mp4", "json", "zip",
+                    'pdf', 'txt', 'doc', 'docx', 'xlsx', 'png',
+                    'jpg', 'jpeg', 'gif', 'mp4', 'json', 'zip',
                 }:
                     continue
             if candidate not in seen:
@@ -829,7 +819,7 @@ def section_link_candidates(message):
 
 
 def section_repost_body(message):
-    content = message.content or ""
+    content = message.content or ''
     if (
         re.search(r'(?im)^Posted:\s*', content)
         and re.search(r'(?im)^Comments:\s*', content)
@@ -837,39 +827,39 @@ def section_repost_body(message):
         return re.sub(
             r'(?im)^[ \t]*Comments:[ \t]*(?:\r?\n[ \t]*)?'
             r'No comments\.?[ \t]*(?:\r?\n|$)',
-            "",
-            content,
+            '', content,
         ).strip()
-
-    comments = SECTION_URL_PATTERN.sub("", content).strip()
+    comments = SECTION_URL_PATTERN.sub('', content).strip()
     body = (
-        "\n".join(section_link_candidates(message))
-        + f"\nPosted: <@{message.author.id}>"
+        '\n'.join(section_link_candidates(message))
+        + f'\nPosted: <@{message.author.id}>'
     )
     if comments:
-        body += "\nComments:\n" + comments
+        body += '\nComments:\n' + comments
     return body
 
 
 def section_live_link_allowed(candidate):
     try:
-        parsed = urlsplit(candidate if "://" in candidate else "https://" + candidate)
-        if parsed.scheme.lower() not in {"http", "https"}:
+        parsed = urlsplit(
+            candidate if '://' in candidate else 'https://' + candidate
+        )
+        if parsed.scheme.lower() not in {'http', 'https'}:
             return False
         if parsed.username is not None or parsed.password is not None:
             return False
         if parsed.port is not None and parsed.port != (
-            443 if parsed.scheme.lower() == "https" else 80
+            443 if parsed.scheme.lower() == 'https' else 80
         ):
             return False
-        host = (parsed.hostname or "").casefold().rstrip(".")
+        host = (parsed.hostname or '').casefold().rstrip('.')
         path = unquote(parsed.path)
         rule = LIVE_LINK_HOST_RULES.get(host)
         if not rule or not re.fullmatch(rule, path):
             return False
         if (
-            host in {"twitch.tv", "www.twitch.tv"}
-            and path.strip("/").casefold() in TWITCH_RESERVED_PATHS
+            host in {'twitch.tv', 'www.twitch.tv'}
+            and path.strip('/').casefold() in TWITCH_RESERVED_PATHS
         ):
             return False
         if any(
@@ -884,52 +874,62 @@ def section_live_link_allowed(candidate):
 
 def tiktok_link_kind(candidate):
     try:
-        parsed = urlsplit(candidate if "://" in candidate else "https://" + candidate)
-        host = (parsed.hostname or "").lower().rstrip(".")
+        parsed = urlsplit(
+            candidate if '://' in candidate else 'https://' + candidate
+        )
+        host = (parsed.hostname or '').lower().rstrip('.')
         if host not in TIKTOK_SHARE_HOSTS:
-            return "other"
-        if parsed.scheme.lower() not in {"http", "https"}:
-            return "reject"
+            return 'other'
+        if parsed.scheme.lower() not in {'http', 'https'}:
+            return 'reject'
         if parsed.username is not None or parsed.password is not None:
-            return "reject"
-        if parsed.port not in (None, 80 if parsed.scheme.lower() == "http" else 443):
-            return "reject"
+            return 'reject'
+        if parsed.port not in (
+            None, 80 if parsed.scheme.lower() == 'http' else 443
+        ):
+            return 'reject'
         path = unquote(parsed.path)
         if re.fullmatch(r'/@[A-Za-z0-9._]{1,24}/live/?', path):
-            return "live"
+            return 'live'
         if re.fullmatch(r'/(?:share/live|live/share)/[0-9]+/?', path):
-            return "live"
-        if re.fullmatch(r'/@[A-Za-z0-9._]{1,24}/(?:video|photo)/[0-9]+/?', path):
-            return "reject"
+            return 'live'
+        if re.fullmatch(
+            r'/@[A-Za-z0-9._]{1,24}/(?:video|photo)/[0-9]+/?',
+            path,
+        ):
+            return 'reject'
         if re.fullmatch(r'/share/(?:video|photo)/[0-9]+/?', path):
-            return "reject"
+            return 'reject'
         if (
-            host in {"vm.tiktok.com", "vt.tiktok.com"}
+            host in {'vm.tiktok.com', 'vt.tiktok.com'}
             or re.fullmatch(r'/t/[^/]+/?', path)
         ):
-            return "short"
-        return "unknown"
+            return 'short'
+        return 'unknown'
     except (ValueError, UnicodeError):
-        return "reject"
+        return 'reject'
 
 
 async def resolve_tiktok_share(candidate):
     import aiohttp
 
     kind = tiktok_link_kind(candidate)
-    if kind != "short":
+    if kind != 'short':
         return kind
+
     cached = TIKTOK_RESOLUTION_CACHE.get(candidate)
     if cached and cached[0] > time.monotonic():
         return cached[1]
-    current = candidate if "://" in candidate else "https://" + candidate
-    result = "unknown"
+
+    current = candidate if '://' in candidate else 'https://' + candidate
+    result = 'unknown'
+
     try:
         async with asyncio.timeout(15):
             async with aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=6),
                 cookie_jar=aiohttp.DummyCookieJar(),
-                headers={"User-Agent": "Mozilla/5.0", "Accept": "text/html"},
+                headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html'},
                 trust_env=False,
             ) as session:
                 visited = set()
@@ -938,40 +938,52 @@ async def resolve_tiktok_share(candidate):
                         break
                     visited.add(current)
                     parsed = urlsplit(current)
-                    host = (parsed.hostname or "").lower().rstrip(".")
+                    host = (parsed.hostname or '').lower().rstrip('.')
                     if (
                         host not in TIKTOK_SHARE_HOSTS
-                        or parsed.scheme.lower() not in {"http", "https"}
+                        or parsed.scheme.lower() not in {'http', 'https'}
                         or parsed.username is not None
                         or parsed.password is not None
-                        or parsed.port not in (None, 80 if parsed.scheme == "http" else 443)
+                        or parsed.port not in (
+                            None, 80 if parsed.scheme == 'http' else 443
+                        )
                     ):
                         break
+
                     current_kind = tiktok_link_kind(current)
-                    if current_kind in {"live", "reject"}:
+                    if current_kind in {'live', 'reject'}:
                         result = current_kind
                         break
-                    async with session.get(current, allow_redirects=False) as response:
+
+                    async with session.get(
+                        current, allow_redirects=False
+                    ) as response:
                         if response.status in {301, 302, 303, 307, 308}:
-                            location = response.headers.get("Location")
+                            location = response.headers.get('Location')
                             if not location:
                                 break
                             destination = urljoin(str(response.url), location)
                         else:
                             break
+
                     destination_kind = tiktok_link_kind(destination)
-                    if destination_kind in {"live", "reject"}:
+                    if destination_kind in {'live', 'reject'}:
                         result = destination_kind
                         break
-                    if destination_kind == "other":
+                    if destination_kind == 'other':
                         break
                     current = destination
+
     except (aiohttp.ClientError, TimeoutError, ValueError, UnicodeError):
-        logger.warning("TikTok share could not be resolved; leaving pending for retry")
+        logger.warning(
+            'TikTok share could not be resolved; leaving pending for retry'
+        )
+
     if len(TIKTOK_RESOLUTION_CACHE) >= 2048:
         TIKTOK_RESOLUTION_CACHE.clear()
+
     TIKTOK_RESOLUTION_CACHE[candidate] = (
-        time.monotonic() + (3600 if result != "unknown" else 60),
+        time.monotonic() + (3600 if result != 'unknown' else 60),
         result,
     )
     return result
@@ -979,30 +991,33 @@ async def resolve_tiktok_share(candidate):
 
 async def section_link_allowed_resolved(candidate):
     kind = tiktok_link_kind(candidate)
-    if kind == "other":
+    if kind == 'other':
         return section_live_link_allowed(candidate)
-    if kind == "short":
+    if kind == 'short':
         kind = await resolve_tiktok_share(candidate)
-    if kind == "live":
+    if kind == 'live':
         return True
-    if kind == "reject":
+    if kind == 'reject':
         return False
     return None
 
 
 def is_cause_announcement(message):
     author = message.author
-    if getattr(author, "bot", False):
+    if getattr(author, 'bot', False):
         return False
+
     if CAUSE_EXCEPTION_USER_ID:
         if author.id != CAUSE_EXCEPTION_USER_ID:
             return False
-    elif str(getattr(author, "name", "")).casefold() != CAUSE_EXCEPTION_USERNAME:
+    elif str(getattr(author, 'name', '')).casefold() != CAUSE_EXCEPTION_USERNAME:
         return False
-    content = URL_PATTERN.sub(" ", message.content or "")
-    content = normalize(content).replace("’", "'")
-    content = re.sub(r"['`]", " ", content)
-    content = re.sub(r'\s+', " ", content).strip()
+
+    content = URL_PATTERN.sub(' ', message.content or '')
+    content = normalize(content).replace('’', "'")
+    content = re.sub(r"['`]", ' ', content)
+    content = re.sub(r'\s+', ' ', content).strip()
+
     return bool(
         len(re.findall(r'\b[a-z]{2,}\b', content)) >= 10
         and section_link_candidates(message)
@@ -1012,53 +1027,191 @@ def is_cause_announcement(message):
 
 
 def troll_comment_findings(content):
-    text = unicodedata.normalize("NFKC", content or "")
-    text = "".join(c for c in text if unicodedata.category(c) != "Cf")
+    text = unicodedata.normalize('NFKC', content or '')
+    text = ''.join(c for c in text if unicodedata.category(c) != 'Cf')
+
     matches = sorted(
         (m for pattern in TROLL_PATTERNS for m in pattern.finditer(text)),
         key=lambda m: (m.start(), -(m.end() - m.start())),
     )
+
     findings = []
     covered = -1
+
     for match in matches:
         if match.end() <= covered:
             continue
         covered = match.end()
+
         start = max(
-            text.rfind("\n", 0, match.start()),
-            text.rfind("!", 0, match.start()),
-            text.rfind("?", 0, match.start()),
-            text.rfind(";", 0, match.start()),
+            text.rfind('\n', 0, match.start()),
+            text.rfind('!', 0, match.start()),
+            text.rfind('?', 0, match.start()),
+            text.rfind(';', 0, match.start()),
         ) + 1
+
         before = text[start:match.start()][-180:]
-        after = text[match.end():].split("\n", 1)[0][:160]
+        after = text[match.end():].split('\n', 1)[0][:160]
+
         attributed = bool(
             TROLL_ATTRIBUTION.search(before)
             or TROLL_DISCOURAGEMENT.search(before)
         )
         endorsed = bool(TROLL_ENDORSEMENT.search(after))
+
         if attributed and not endorsed:
             continue
-        quoted = before.rstrip().endswith(('"', "“", "‘"))
-        blockquote = text[start:match.start()].lstrip().startswith(">")
-        ambiguous = quoted or blockquote or match.group().lower() in {"nazi", "nazis"}
-        label = (
-            "Possible endorsement; review context" if endorsed else
-            "Ambiguous mention; review context" if ambiguous else
-            "Possible direct statement; review context"
+
+        quoted = before.rstrip().endswith(('"', '“', '‘'))
+        blockquote = text[start:match.start()].lstrip().startswith('>')
+        ambiguous = (
+            quoted
+            or blockquote
+            or match.group().lower() in {'nazi', 'nazis'}
         )
+
+        label = (
+            'Possible endorsement; review context' if endorsed else
+            'Ambiguous mention; review context' if ambiguous else
+            'Possible direct statement; review context'
+        )
+
         findings.append((match.group(), label))
+
     return findings
+
+
+def media_worker(source):
+    from nudenet import NudeDetector
+    from PIL import Image, ImageOps
+
+    blocked = {
+        'FEMALE_BREAST_EXPOSED',
+        'FEMALE_GENITALIA_EXPOSED',
+        'MALE_GENITALIA_EXPOSED',
+        'ANUS_EXPOSED',
+        'BUTTOCKS_EXPOSED',
+    }
+    detector = NudeDetector()
+
+    def check(path):
+        return any(
+            d['class'] in blocked and d['score'] >= NUDITY_THRESHOLD
+            for d in detector.detect(str(path))
+        )
+
+    with tempfile.TemporaryDirectory() as folder:
+        folder = Path(folder)
+
+        try:
+            image = Image.open(source)
+        except Exception:
+            image = None
+
+        if image is not None:
+            with image:
+                if not getattr(image, 'is_animated', False):
+                    image = ImageOps.exif_transpose(image)
+                    image.thumbnail((1280, 1280))
+                    target = folder / 'image.jpg'
+                    image.convert('RGB').save(target)
+                    return {'blocked': check(target), 'complete': True, 'media_kind': 'image'}
+
+        probe = subprocess.run(
+            [
+                'ffprobe', '-v', 'error', '-show_entries',
+                'format=duration', '-of', 'json', str(source),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=True,
+        )
+
+        duration = float(json.loads(probe.stdout)['format']['duration'])
+        if not 0 < duration <= MAX_VIDEO_SECONDS:
+            return {
+                'blocked': False,
+                'complete': False,
+                'reason': 'Video/GIF exceeds the 120-second scan limit',
+            }
+
+        subprocess.run(
+            [
+                'ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error',
+                '-threads', '1', '-protocol_whitelist', 'file,pipe',
+                '-i', str(source), '-vf',
+                'fps=2,scale=640:640:force_original_aspect_ratio=decrease',
+                '-frames:v', str(MAX_VIDEO_SECONDS * 2 + 1),
+                str(folder / 'frame-%04d.jpg'),
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=60,
+            check=True,
+        )
+
+        frames = sorted(folder.glob('frame-*.jpg'))
+        if not frames:
+            raise ValueError('No video frames decoded')
+
+        for frame in frames:
+            if check(frame):
+                return {'blocked': True, 'complete': True, 'media_kind': 'video'}
+
+        return {'blocked': False, 'complete': True, 'media_kind': 'video'}
+
+
+if (
+    __name__ == '__main__'
+    and len(sys.argv) > 1
+    and sys.argv[1] == '--media-worker'
+):
+    try:
+        result = media_worker(sys.argv[2])
+        print('SCAN_RESULT=' + json.dumps(result), flush=True)
+    except Exception as exc:
+        print(
+            'SCAN_RESULT=' + json.dumps({
+                'blocked': False,
+                'complete': False,
+                'reason': 'Media scan failed: ' + type(exc).__name__,
+            }),
+            flush=True,
+        )
+    sys.exit(0)
+
+import discord
+from discord.ext import tasks
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('moderation')
+
+
+EMBEDDED_MEDIA_HOSTS = frozenset({
+    'pbs.twimg.com', 'video.twimg.com',
+    'images-ext-1.discordapp.net', 'images-ext-2.discordapp.net',
+    'media.discordapp.net', 'cdn.discordapp.com',
+})
+
+TEXT_PATTERNS += tuple(re.compile(pattern) for pattern in (
+    r'\b(?:link to|see|watch|unlock|get|find) (?:the |my |a )?'
+    r'(?:free |full |uncensored )?(?:nude|naked|nuddy|nudd[yi]e|nudie) '
+    r'(?:version|content|videos?|pics?|photos?)\b',
+    r'\b(?:free |full |uncensored )?(?:nude|naked|nuddy|nudie) '
+    r'(?:version|content|videos?|pics?|photos?) '
+    r'(?:is |available )?(?:in|on|at|through) (?:my |the )?'
+    r'(?:profile|bio|page|link)\b',
+))
 
 
 def trusted_embedded_media_url(url):
     try:
         parsed = urlsplit(url)
         return (
-            parsed.scheme.lower() == "https"
-            and (parsed.hostname or "").lower() in EMBEDDED_MEDIA_HOSTS
-            and parsed.username is None
-            and parsed.password is None
+            parsed.scheme.lower() == 'https'
+            and (parsed.hostname or '').lower() in EMBEDDED_MEDIA_HOSTS
+            and parsed.username is None and parsed.password is None
             and parsed.port in (None, 443)
         )
     except (ValueError, UnicodeError):
@@ -1076,142 +1229,30 @@ class EmbeddedMediaDownload:
         import aiohttp
 
         if not trusted_embedded_media_url(self.url):
-            raise ValueError("Unapproved embedded-media URL")
+            raise ValueError('Unapproved embedded-media URL')
         async with aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=55),
-            cookie_jar=aiohttp.DummyCookieJar(),
-            trust_env=False,
+            cookie_jar=aiohttp.DummyCookieJar(), trust_env=False,
         ) as session:
             async with session.get(self.url, allow_redirects=False) as response:
                 if response.status != 200:
-                    raise ValueError(f"Embedded-media HTTP status {response.status}")
-                content_type = response.headers.get("Content-Type", "").lower()
-                if not content_type.startswith(("image/", "video/")):
-                    raise ValueError("Embedded URL did not return an image or video")
-                if self.expected_kind == "video" and not content_type.startswith("video/"):
-                    raise ValueError("Video URL returned a preview image instead of video")
+                    raise ValueError(f'Embedded-media HTTP status {response.status}')
+                content_type = response.headers.get('Content-Type', '').lower()
+                if not content_type.startswith(('image/', 'video/')):
+                    raise ValueError('Embedded URL did not return an image or video')
+                if self.expected_kind == 'video' and not content_type.startswith('video/'):
+                    raise ValueError('Video URL returned a preview image instead of video')
                 if response.content_length and response.content_length > MAX_MEDIA_BYTES:
-                    raise ValueError("Embedded media exceeds 25 MiB")
+                    raise ValueError('Embedded media exceeds 25 MiB')
                 size = 0
-                with open(destination, "wb") as output:
+                with open(destination, 'wb') as output:
                     async for chunk in response.content.iter_chunked(65536):
                         size += len(chunk)
                         if size > MAX_MEDIA_BYTES:
-                            raise ValueError("Embedded media exceeds 25 MiB")
+                            raise ValueError('Embedded media exceeds 25 MiB')
                         output.write(chunk)
                 if not size:
-                    raise ValueError("Empty embedded-media response")
-
-
-def media_worker(source):
-    from nudenet import NudeDetector
-    from PIL import Image, ImageOps
-
-    blocked = {
-        "FEMALE_BREAST_EXPOSED",
-        "FEMALE_GENITALIA_EXPOSED",
-        "MALE_GENITALIA_EXPOSED",
-        "ANUS_EXPOSED",
-        "BUTTOCKS_EXPOSED",
-    }
-    detector = NudeDetector()
-
-    def check(path):
-        return any(
-            d["class"] in blocked and d["score"] >= NUDITY_THRESHOLD
-            for d in detector.detect(str(path))
-        )
-
-    with tempfile.TemporaryDirectory() as folder:
-        folder = Path(folder)
-        try:
-            image = Image.open(source)
-        except Exception:
-            image = None
-        if image is not None:
-            with image:
-                if not getattr(image, "is_animated", False):
-                    image = ImageOps.exif_transpose(image)
-                    image.thumbnail((1280, 1280))
-                    target = folder / "image.jpg"
-                    image.convert("RGB").save(target)
-                    return {
-                        "blocked": check(target),
-                        "complete": True,
-                        "media_kind": "image",
-                    }
-        probe = subprocess.run(
-            [
-                "ffprobe", "-v", "error", "-show_entries",
-                "format=duration", "-of", "json", str(source),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=20,
-            check=True,
-        )
-        duration = float(json.loads(probe.stdout)["format"]["duration"])
-        if not 0 < duration <= MAX_VIDEO_SECONDS:
-            return {
-                "blocked": False,
-                "complete": False,
-                "reason": "Video/GIF exceeds the 120-second scan limit",
-            }
-        subprocess.run(
-            [
-                "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
-                "-threads", "1", "-protocol_whitelist", "file,pipe",
-                "-i", str(source), "-vf",
-                "fps=2,scale=640:640:force_original_aspect_ratio=decrease",
-                "-frames:v", str(MAX_VIDEO_SECONDS * 2 + 1),
-                str(folder / "frame-%04d.jpg"),
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=60,
-            check=True,
-        )
-        frames = sorted(folder.glob("frame-*.jpg"))
-        if not frames:
-            raise ValueError("No video frames decoded")
-        for frame in frames:
-            if check(frame):
-                return {
-                    "blocked": True,
-                    "complete": True,
-                    "media_kind": "video",
-                }
-        return {
-            "blocked": False,
-            "complete": True,
-            "media_kind": "video",
-        }
-
-
-if (
-    __name__ == "__main__"
-    and len(sys.argv) > 1
-    and sys.argv[1] == "--media-worker"
-):
-    try:
-        result = media_worker(sys.argv[2])
-        print("SCAN_RESULT=" + json.dumps(result), flush=True)
-    except Exception as exc:
-        print(
-            "SCAN_RESULT=" + json.dumps({
-                "blocked": False,
-                "complete": False,
-                "reason": "Media scan failed: " + type(exc).__name__,
-            }),
-            flush=True,
-        )
-    sys.exit(0)
-
-import discord
-from discord.ext import tasks
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("moderation")
+                    raise ValueError('Empty embedded-media response')
 
 
 class Moderator(discord.Client):
@@ -1220,17 +1261,21 @@ class Moderator(discord.Client):
         intents.guilds = True
         intents.guild_messages = True
         intents.message_content = True
+
         super().__init__(
             intents=intents,
             max_messages=None,
             allowed_mentions=discord.AllowedMentions.none(),
         )
-        state = Path(os.getenv("STATE_PATH", "./data/moderation.sqlite3"))
+
+        state = Path(os.getenv('STATE_PATH', './data/moderation.sqlite3'))
         state.parent.mkdir(parents=True, exist_ok=True)
+
         self.db = sqlite3.connect(state)
-        self.db.execute("PRAGMA journal_mode=WAL")
-        self.db.execute("PRAGMA synchronous=FULL")
-        self.db.executescript("""
+        self.db.execute('PRAGMA journal_mode=WAL')
+        self.db.execute('PRAGMA synchronous=FULL')
+
+        self.db.executescript('''
             CREATE TABLE IF NOT EXISTS adult_feed_v7 (
                 domain TEXT PRIMARY KEY
             );
@@ -1268,28 +1313,37 @@ class Moderator(discord.Client):
                 id INTEGER PRIMARY KEY,
                 body TEXT NOT NULL
             );
-        """)
+        ''')
+
         self.db.commit()
         self.worker = None
-        self.feed_revision = self.setting("feed_revision", "none")
+        self.feed_revision = self.setting('feed_revision', 'none')
         self.message_lock = asyncio.Lock()
 
     def setting(self, key, default):
         row = self.db.execute(
-            "SELECT value FROM settings_v3 WHERE key=?", (key,)
+            'SELECT value FROM settings_v3 WHERE key=?',
+            (key,),
         ).fetchone()
         return row[0] if row else default
 
     def set_setting(self, key, value):
         self.db.execute(
-            "INSERT OR REPLACE INTO settings_v3 VALUES (?,?)", (key, str(value))
+            'INSERT OR REPLACE INTO settings_v3 VALUES (?,?)',
+            (key, str(value)),
         )
         self.db.commit()
 
     def enqueue(self, message_id, edited=False):
-        self.db.execute("INSERT OR IGNORE INTO jobs_v3(id) VALUES (?)", (message_id,))
+        self.db.execute(
+            'INSERT OR IGNORE INTO jobs_v3(id) VALUES (?)',
+            (message_id,),
+        )
         if edited:
-            self.db.execute("UPDATE jobs_v3 SET due=0 WHERE id=?", (message_id,))
+            self.db.execute(
+                'UPDATE jobs_v3 SET due=0 WHERE id=?',
+                (message_id,),
+            )
         self.db.commit()
 
     async def setup_hook(self):
@@ -1297,10 +1351,14 @@ class Moderator(discord.Client):
 
     async def on_ready(self):
         logger.info(
-            "Connected as %s | NSFW channel=%s | live-link channel=%s "
-            "| log=%s | output=%s | text patterns=%s",
-            self.user, CHANNEL_ID, LIVE_LINKS_ONLY_CHANNEL_ID,
-            MOD_LOG_ID, OUTPUT_CHANNEL_ID, len(TEXT_PATTERNS),
+            'Connected as %s | NSFW channel=%s | live-link channel=%s '
+            '| log=%s | output=%s | text patterns=%s',
+            self.user,
+            CHANNEL_ID,
+            LIVE_LINKS_ONLY_CHANNEL_ID,
+            MOD_LOG_ID,
+            OUTPUT_CHANNEL_ID,
+            len(TEXT_PATTERNS),
         )
 
     async def on_message(self, message):
@@ -1313,21 +1371,27 @@ class Moderator(discord.Client):
 
     async def on_raw_message_delete(self, payload):
         if payload.channel_id == CHANNEL_ID:
-            self.db.execute("DELETE FROM jobs_v3 WHERE id=?", (payload.message_id,))
+            self.db.execute(
+                'DELETE FROM jobs_v3 WHERE id=?',
+                (payload.message_id,),
+            )
             self.db.commit()
 
     async def close(self):
         task = self.scanner.get_task()
         self.scanner.cancel()
+
         if task and task is not asyncio.current_task():
             try:
                 await task
             except asyncio.CancelledError:
                 pass
+
         if self.worker is not None and self.worker.returncode is None:
             self.worker.kill()
             await self.worker.wait()
             self.worker = None
+
         try:
             await super().close()
         finally:
@@ -1336,36 +1400,42 @@ class Moderator(discord.Client):
     async def scan_attachment(self, attachment):
         if attachment.size > MAX_MEDIA_BYTES:
             return {
-                "blocked": False,
-                "complete": False,
-                "reason": "Attachment exceeds 25 MiB",
+                'blocked': False,
+                'complete': False,
+                'reason': 'Attachment exceeds 25 MiB',
             }
+
         with tempfile.TemporaryDirectory() as folder:
-            source = Path(folder) / "media"
+            source = Path(folder) / 'media'
             await asyncio.wait_for(attachment.save(source), timeout=60)
+
             worker = await asyncio.create_subprocess_exec(
                 sys.executable,
                 str(Path(__file__).resolve()),
-                "--media-worker",
+                '--media-worker',
                 str(source),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
                 env={
                     **os.environ,
-                    "OMP_NUM_THREADS": "1",
-                    "OPENBLAS_NUM_THREADS": "1",
+                    'OMP_NUM_THREADS': '1',
+                    'OPENBLAS_NUM_THREADS': '1',
                 },
             )
             self.worker = worker
+
             try:
-                output, _ = await asyncio.wait_for(worker.communicate(), timeout=180)
+                output, _ = await asyncio.wait_for(
+                    worker.communicate(),
+                    timeout=180,
+                )
                 results = [
                     line[12:]
-                    for line in output.decode(errors="replace").splitlines()
-                    if line.startswith("SCAN_RESULT=")
+                    for line in output.decode(errors='replace').splitlines()
+                    if line.startswith('SCAN_RESULT=')
                 ]
                 if worker.returncode != 0 or not results:
-                    raise RuntimeError("Media worker failed")
+                    raise RuntimeError('Media worker failed')
                 return json.loads(results[-1])
             finally:
                 if worker.returncode is None:
@@ -1375,49 +1445,61 @@ class Moderator(discord.Client):
                     self.worker = None
 
     def message_text(self, message):
-        parts = [message.content or ""]
+        parts = [message.content or '']
         for embed in message.embeds:
             parts.extend([
-                embed.title or "", embed.description or "", embed.url or "",
+                embed.title or '',
+                embed.description or '',
+                embed.url or '',
             ])
             for field in embed.fields:
                 parts.extend([field.name, field.value])
             for media in (embed.image, embed.thumbnail, embed.video):
                 if media:
-                    parts.append(media.url or "")
-        return "\n".join(parts)
+                    parts.append(media.url or '')
+        return '\n'.join(parts)
 
     def fingerprint(self, message):
         data = {
-            "policy": POLICY_VERSION + ":" + self.feed_revision,
-            "text": self.message_text(message),
-            "attachments": [(a.id, a.filename, a.size) for a in message.attachments],
-            "edited": str(message.edited_at),
+            'policy': POLICY_VERSION + ':' + self.feed_revision,
+            'text': self.message_text(message),
+            'attachments': [
+                (a.id, a.filename, a.size)
+                for a in message.attachments
+            ],
+            'edited': str(message.edited_at),
         }
-        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+        return hashlib.sha256(
+            json.dumps(data, sort_keys=True).encode()
+        ).hexdigest()
 
     def feed_blocked_domain(self, host):
-        labels = host.lower().rstrip(".").split(".")
+        labels = host.lower().rstrip('.').split('.')
+
         if any(
-            ".".join(labels[index:]) in FEED_EXCLUDED_ROOTS
+            '.'.join(labels[index:]) in FEED_EXCLUDED_ROOTS
             for index in range(len(labels) - 1)
         ):
             return False
+
         for index in range(len(labels) - 1):
             if self.db.execute(
-                "SELECT 1 FROM adult_feed_v7 WHERE domain=?",
-                (".".join(labels[index:]),),
+                'SELECT 1 FROM adult_feed_v7 WHERE domain=?',
+                ('.'.join(labels[index:]),),
             ).fetchone():
                 return True
+
         return False
 
     async def refresh_adult_feed(self):
         import aiohttp
 
         now = time.time()
-        if now < float(self.setting("feed_next_attempt", "0")):
+        if now < float(self.setting('feed_next_attempt', '0')):
             return
-        self.set_setting("feed_next_attempt", now + 3600)
+
+        self.set_setting('feed_next_attempt', now + 3600)
+
         try:
             async with aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=30)
@@ -1426,137 +1508,121 @@ class Moderator(discord.Client):
                     response.raise_for_status()
                     chunks = []
                     size = 0
+
                     async for chunk in response.content.iter_chunked(65536):
                         size += len(chunk)
                         if size > FEED_MAX_BYTES:
-                            raise ValueError("Domain feed exceeds configured limit")
+                            raise ValueError('Domain feed exceeds configured limit')
                         chunks.append(chunk)
-            data = b"".join(chunks)
-            domains = parse_adult_feed(data.decode("utf-8-sig"))
+
+            data = b''.join(chunks)
+            domains = parse_adult_feed(data.decode('utf-8-sig'))
             revision = hashlib.sha256(data).hexdigest()
+
             with self.db:
-                self.db.execute("DELETE FROM adult_feed_v7")
+                self.db.execute('DELETE FROM adult_feed_v7')
                 self.db.executemany(
-                    "INSERT INTO adult_feed_v7 VALUES (?)",
+                    'INSERT INTO adult_feed_v7 VALUES (?)',
                     ((domain,) for domain in domains),
                 )
                 self.db.execute(
-                    "INSERT OR REPLACE INTO settings_v3 VALUES (?,?)",
-                    ("feed_revision", revision),
+                    'INSERT OR REPLACE INTO settings_v3 VALUES (?,?)',
+                    ('feed_revision', revision),
                 )
                 self.db.execute(
-                    "INSERT OR REPLACE INTO settings_v3 VALUES (?,?)",
-                    ("feed_next_attempt", str(now + FEED_REFRESH_SECONDS)),
+                    'INSERT OR REPLACE INTO settings_v3 VALUES (?,?)',
+                    ('feed_next_attempt', str(now + FEED_REFRESH_SECONDS)),
                 )
+
             self.feed_revision = revision
-            logger.info("Adult domain cache refreshed: %s entries", len(domains))
+            logger.info('Adult domain cache refreshed: %s entries', len(domains))
+
         except Exception:
             logger.exception(
-                "Adult domain refresh failed; using cached and built-in rules"
+                'Adult domain refresh failed; using cached and built-in rules'
             )
 
     async def inspect(self, message):
         reason = text_violation(
-            self.message_text(message), self.feed_blocked_domain
+            self.message_text(message),
+            self.feed_blocked_domain,
         )
         if reason:
             return reason, []
+
         limitations = []
+
         for attachment in message.attachments:
             extension = Path(attachment.filename).suffix.lower()
             if not (
-                (attachment.content_type or "").startswith(("image/", "video/"))
+                (attachment.content_type or '').startswith(('image/', 'video/'))
                 or extension in {
-                    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
-                    ".mp4", ".mov", ".webm", ".mkv",
+                    '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp',
+                    '.mp4', '.mov', '.webm', '.mkv',
                 }
             ):
-                limitations.append("Unsupported attachment type")
+                limitations.append('Unsupported attachment type')
                 continue
+
             result = await self.scan_attachment(attachment)
-            if result["blocked"]:
-                return "Nudity detected in attached media", []
-            if not result["complete"]:
-                limitations.append(result.get("reason", "Incomplete media scan"))
+            if result['blocked']:
+                return 'Nudity detected in attached media', []
+            if not result['complete']:
+                limitations.append(result.get('reason', 'Incomplete media scan'))
 
         seen_media = set()
         for embed in message.embeds:
-            if (
-                getattr(embed, "type", "") in {"video", "gifv"}
-                and not getattr(embed.video, "url", None)
-            ):
-                limitations.append("Video embed has no downloadable full-video URL")
-
+            if getattr(embed, 'type', '') in {'video', 'gifv'} and not getattr(embed.video, 'url', None):
+                limitations.append('Video embed has no downloadable full-video URL')
             for media_kind, media in (
-                ("video", embed.video),
-                ("image", embed.image),
-                ("image", embed.thumbnail),
+                ('video', embed.video), ('image', embed.image), ('image', embed.thumbnail),
             ):
-                if (
-                    not media
-                    or not media.url
-                    or (media_kind, media.url) in seen_media
-                ):
+                if not media or not media.url or (media_kind, media.url) in seen_media:
                     continue
                 seen_media.add((media_kind, media.url))
                 candidates = list(dict.fromkeys(
-                    value
-                    for value in (getattr(media, "proxy_url", None), media.url)
+                    value for value in (getattr(media, 'proxy_url', None), media.url)
                     if value and trusted_embedded_media_url(value)
                 ))
                 if not candidates:
-                    limitations.append("Embedded media host is not approved for download")
+                    limitations.append('Embedded media host is not approved for download')
                     continue
                 completed = False
                 errors = []
                 for url in candidates:
                     try:
                         result = await self.scan_attachment(
-                            EmbeddedMediaDownload(url, expected_kind=media_kind)
-                        )
-                        if result["blocked"]:
-                            return "Nudity detected in linked or embedded media", []
-                        if result["complete"] and (
-                            media_kind != "video"
-                            or result.get("media_kind") == "video"
+                            EmbeddedMediaDownload(url, expected_kind=media_kind))
+                        if result['blocked']:
+                            return 'Nudity detected in linked or embedded media', []
+                        if result['complete'] and (
+                            media_kind != 'video' or result.get('media_kind') == 'video'
                         ):
                             completed = True
                             break
-                        errors.append(
-                            result.get(
-                                "reason",
-                                "Media type or completeness not verified",
-                            )
-                        )
+                        errors.append(result.get('reason', 'Media type or completeness not verified'))
                     except Exception as exc:
-                        errors.append(f"{type(exc).__name__}: {str(exc)[:180]}")
-                        logger.warning(
-                            "Embedded %s scan incomplete | message=%s | %s",
-                            media_kind, message.id, errors[-1],
-                        )
+                        errors.append(f'{type(exc).__name__}: {str(exc)[:180]}')
+                        logger.warning('Embedded %s scan incomplete | message=%s | %s',
+                                       media_kind, message.id, errors[-1])
                 if not completed:
                     limitations.append(
-                        f"Embedded {media_kind} incomplete: "
-                        + "; ".join(errors)[:400]
-                    )
+                        f'Embedded {media_kind} incomplete: ' + '; '.join(errors)[:400])
 
         x_posts = []
         for url in section_link_candidates(message):
             try:
-                parsed = urlsplit(url if "://" in url else "https://" + url)
-                host = (parsed.hostname or "").lower().removeprefix("www.")
+                parsed = urlsplit(url if '://' in url else 'https://' + url)
+                host = (parsed.hostname or '').lower().removeprefix('www.')
                 if host in {
-                    "x.com", "twitter.com", "vxtwitter.com", "fxtwitter.com",
-                    "fixupx.com", "fixvx.com",
+                    'x.com', 'twitter.com', 'vxtwitter.com', 'fxtwitter.com',
+                    'fixupx.com', 'fixvx.com',
                 } and re.fullmatch(r'/[^/]+/status/[0-9]+/?', parsed.path):
                     x_posts.append(url)
             except ValueError:
                 continue
-
         if x_posts and not seen_media:
-            limitations.append(
-                "X status link has no accessible media; cannot verify whether it contains media"
-            )
+            limitations.append('X status link has no accessible media; cannot verify whether it contains media')
 
         if limitations:
             self.record_incomplete_scan(message, limitations)
@@ -1565,61 +1631,70 @@ class Moderator(discord.Client):
 
     def record_incomplete_scan(self, message, limitations):
         digest = self.fingerprint(message)
-        case_id = f"scan-review-{message.id}-{digest[:12]}"
-        details = "; ".join(sorted(set(limitations)))[:650]
+        case_id = f'scan-review-{message.id}-{digest[:12]}'
         body = (
-            f"MEDIA SCAN INCOMPLETE / REVIEW REQUIRED | Case {case_id}\n"
-            f"Server ID: {message.guild.id}\n"
-            f"Channel ID: {message.channel.id}\n"
-            f"Message ID: {message.id}\n"
-            f"Author ID: {message.author.id}\n"
-            f"Original message: {message.jump_url}\n"
-            f"Posted UTC: {message.created_at.isoformat()}\n"
-            f"Reported UTC: {discord.utils.utcnow().isoformat()}\n"
-            f"Details: {details}\n"
-            "NSFW status is unconfirmed. This is not a clean result. "
-            "No timeout is applied solely because media was inaccessible. "
-            "Live-link reposting is withheld. Retry scheduled; moderator review required. "
-            "No media is copied into this log."
+            f'MEDIA SCAN INCOMPLETE / REVIEW REQUIRED | Case {case_id}\n'
+            f'Server ID: {message.guild.id}\nChannel ID: {message.channel.id}\n'
+            f'Message ID: {message.id}\nAuthor ID: {message.author.id}\n'
+            f'Original message: {message.jump_url}\n'
+            f'Posted UTC: {message.created_at.isoformat()}\n'
+            f'Reported UTC: {discord.utils.utcnow().isoformat()}\n'
+            f'Details: {"; ".join(sorted(set(limitations)))[:650]}\n'
+            'NSFW status is unconfirmed. This is not a clean result. '
+            'No timeout is applied solely because media was inaccessible. '
+            'Live-link reposting is withheld. Retry scheduled; moderator review required. '
+            'No media is copied into this log.'
         )
         with self.db:
-            self.record_event(case_id, "media_review", body)
-        logger.warning(
-            "Media requires review | message=%s | %s", message.id, limitations
-        )
+            self.record_event(case_id, 'media_review', body)
+        logger.warning('Media requires review | message=%s | %s', message.id, limitations)
 
     def record_event(self, case_id, stage, body):
         self.db.execute(
-            "INSERT OR IGNORE INTO events_v5(case_id,stage,body) VALUES (?,?,?)",
+            'INSERT OR IGNORE INTO events_v5(case_id,stage,body) VALUES (?,?,?)',
             (case_id, stage, body),
         )
 
     def start_action(self, message, digest, reason):
         case_id = uuid.uuid4().hex[:16]
         report = {
-            "case_id": case_id,
-            "guild_id": message.guild.id,
-            "channel_id": message.channel.id,
-            "message_id": message.id,
-            "author_id": message.author.id,
-            "message_link": message.jump_url,
-            "posted_utc": message.created_at.isoformat(),
-            "detected_utc": discord.utils.utcnow().isoformat(),
-            "reason": reason,
-            "fingerprint": digest,
-            "attachment_ids": [a.id for a in message.attachments],
-            "attachment_sizes": [a.size for a in message.attachments],
-            "attachment_count": len(message.attachments),
+            'case_id': case_id,
+            'guild_id': message.guild.id,
+            'channel_id': message.channel.id,
+            'message_id': message.id,
+            'author_id': message.author.id,
+            'message_link': message.jump_url,
+            'posted_utc': message.created_at.isoformat(),
+            'detected_utc': discord.utils.utcnow().isoformat(),
+            'reason': reason,
+            'fingerprint': digest,
+            'attachment_ids': [a.id for a in message.attachments],
+            'attachment_sizes': [a.size for a in message.attachments],
+            'attachment_count': len(message.attachments),
         }
+
         with self.db:
             self.db.execute(
-                "INSERT INTO actions_v5 VALUES (?,?,?,?,?,?)",
-                (case_id, message.id, digest, json.dumps(report), "planned", time.time()),
+                'INSERT INTO actions_v5 VALUES (?,?,?,?,?,?)',
+                (
+                    case_id,
+                    message.id,
+                    digest,
+                    json.dumps(report),
+                    'planned',
+                    time.time(),
+                ),
             )
             self.record_event(
-                case_id, "before",
-                self.report_body(report, "BEFORE", "Deletion planned; not yet confirmed."),
+                case_id,
+                'before',
+                self.report_body(
+                    report,
+                    'BEFORE',
+                    'Deletion planned; not yet confirmed.',
+                ),
             )
+
         return case_id
 
     def report_body(self, report, stage, status):
@@ -1639,75 +1714,96 @@ class Moderator(discord.Client):
             f"Attachment IDs: {report['attachment_ids']}\n"
             f"Attachment sizes in bytes: {report['attachment_sizes']}\n"
             f"Fingerprint: {report['fingerprint']}\n"
-            "Report contains metadata only; no message text or media copy."
+            'Report contains metadata only; no message text or media copy.'
         )
 
     def complete_action(self, case_id, state, status):
         row = self.db.execute(
-            "SELECT report FROM actions_v5 WHERE case_id=?", (case_id,)
+            'SELECT report FROM actions_v5 WHERE case_id=?',
+            (case_id,),
         ).fetchone()
         if not row:
             return
+
         report = json.loads(row[0])
+
         with self.db:
             self.db.execute(
-                "UPDATE actions_v5 SET state=?,updated=? WHERE case_id=?",
+                'UPDATE actions_v5 SET state=?,updated=? WHERE case_id=?',
                 (state, time.time(), case_id),
             )
             self.record_event(
-                case_id, state, self.report_body(report, "AFTER", status)
+                case_id,
+                state,
+                self.report_body(report, 'AFTER', status),
             )
-            if state == "confirmed":
+            if state == 'confirmed':
                 self.record_event(
-                    case_id, "output_confirmed",
+                    case_id,
+                    'output_confirmed',
                     f"Removed message {report['message_id']} in <#{report['channel_id']}>. "
                     f"Reason: {report['reason']} | Case {case_id}",
                 )
 
     async def execute_action(self, channel, case_id):
         row = self.db.execute(
-            "SELECT message_id,digest,report,state FROM actions_v5 WHERE case_id=?",
+            'SELECT message_id,digest,report,state FROM actions_v5 WHERE case_id=?',
             (case_id,),
         ).fetchone()
-        if not row or row[3] not in {"planned", "deleting", "retry"}:
+
+        if not row or row[3] not in {'planned', 'deleting', 'retry'}:
             return
+
         message_id, digest, report_json, state = row
         report = json.loads(report_json)
+
         await self.flush_logs(case_id)
+
         try:
             latest = await channel.fetch_message(message_id)
         except discord.NotFound:
             self.complete_action(
-                case_id, "missing",
-                "Message is absent. Who removed it cannot be confirmed; "
-                "a prior bot deletion may have succeeded before interruption.",
+                case_id,
+                'missing',
+                'Message is absent. Who removed it cannot be confirmed; '
+                'a prior bot deletion may have succeeded before interruption.',
             )
             self.finish(message_id)
             await self.flush_logs(case_id)
             return
+
         if self.fingerprint(latest) != digest:
             self.complete_action(
-                case_id, "changed",
-                "Deletion cancelled because the message or policy changed; queued for a fresh scan.",
+                case_id,
+                'changed',
+                'Deletion cancelled because the message or policy changed; '
+                'queued for a fresh scan.',
             )
             self.enqueue(message_id, edited=True)
             await self.flush_logs(case_id)
             return
+
         with self.db:
             self.db.execute(
                 "UPDATE actions_v5 SET state='deleting',updated=? WHERE case_id=?",
                 (time.time(), case_id),
             )
+
         try:
             await latest.delete()
+
         except discord.NotFound:
             self.complete_action(
-                case_id, "missing",
-                "Message disappeared before deletion was acknowledged; deleter unconfirmed.",
+                case_id,
+                'missing',
+                'Message disappeared before deletion was acknowledged; deleter unconfirmed.',
             )
+
         except Exception as exc:
             logger.exception(
-                "NSFW deletion failed | case=%s | message=%s", case_id, message_id
+                'NSFW deletion failed | case=%s | message=%s',
+                case_id,
+                message_id,
             )
             with self.db:
                 self.db.execute(
@@ -1715,37 +1811,49 @@ class Moderator(discord.Client):
                     (time.time(), case_id),
                 )
                 self.record_event(
-                    case_id, "failed",
+                    case_id,
+                    'failed',
                     self.report_body(
-                        report, "AFTER",
-                        f"Deletion not confirmed: {type(exc).__name__}: {exc}; retry scheduled.",
+                        report,
+                        'AFTER',
+                        f'Deletion not confirmed: {type(exc).__name__}: {exc}; '
+                        'retry scheduled.',
                     ),
                 )
                 self.db.execute(
-                    "INSERT OR REPLACE INTO jobs_v3(id,due) VALUES (?,?)",
+                    'INSERT OR REPLACE INTO jobs_v3(id,due) VALUES (?,?)',
                     (message_id, time.time() + 600),
                 )
             await self.flush_logs(case_id)
             return
+
         else:
             self.complete_action(
-                case_id, "confirmed", "Discord acknowledged successful deletion by this bot."
+                case_id,
+                'confirmed',
+                'Discord acknowledged successful deletion by this bot.',
             )
-            logger.info("NSFW message deleted | case=%s | message=%s", case_id, message_id)
+            logger.info(
+                'NSFW message deleted | case=%s | message=%s',
+                case_id,
+                message_id,
+            )
+
         self.finish(message_id)
         await self.flush_logs(case_id)
 
     async def recover_actions(self, channel):
         rows = self.db.execute(
             "SELECT case_id FROM actions_v5 WHERE state IN ('planned','deleting','retry') "
-            "ORDER BY updated LIMIT 100"
+            'ORDER BY updated LIMIT 100'
         ).fetchall()
+
         for (case_id,) in rows:
             try:
                 async with self.message_lock:
                     await self.execute_action(channel, case_id)
             except Exception:
-                logger.exception("Case recovery failed | case=%s", case_id)
+                logger.exception('Case recovery failed | case=%s', case_id)
 
     async def handle(self, channel, message_id):
         try:
@@ -1754,145 +1862,208 @@ class Moderator(discord.Client):
                 "AND state IN ('planned','deleting','retry') ORDER BY updated LIMIT 1",
                 (message_id,),
             ).fetchone()
+
             if active:
                 await self.execute_action(channel, active[0])
                 return
+
             message = await channel.fetch_message(message_id)
             if message.author.id == self.user.id:
                 self.finish(message_id)
                 return
+
             digest = self.fingerprint(message)
             row = self.db.execute(
-                "SELECT digest FROM results_v3 WHERE id=?", (message_id,)
+                'SELECT digest FROM results_v3 WHERE id=?',
+                (message_id,),
             ).fetchone()
+
             if row and row[0] == digest:
                 self.finish(message_id)
                 return
+
             reason, limitations = await self.inspect(message)
+
             if reason:
                 case_id = self.start_action(message, digest, reason)
                 await self.execute_action(channel, case_id)
+
             elif limitations:
                 logger.warning(
-                    "Incomplete scan for %s: %s", message_id, "; ".join(set(limitations))
+                    'Incomplete scan for %s: %s',
+                    message_id,
+                    '; '.join(set(limitations)),
                 )
                 self.db.execute(
-                    "UPDATE jobs_v3 SET due=? WHERE id=?",
+                    'UPDATE jobs_v3 SET due=? WHERE id=?',
                     (time.time() + SCAN_MINUTES * 60, message_id),
                 )
                 self.db.commit()
+
             else:
                 self.db.execute(
-                    "INSERT OR REPLACE INTO results_v3 VALUES (?,?)", (message_id, digest)
+                    'INSERT OR REPLACE INTO results_v3 VALUES (?,?)',
+                    (message_id, digest),
                 )
                 self.finish(message_id)
+
         except discord.NotFound:
             self.finish(message_id)
+
         except Exception:
-            logger.exception("Message scan failed | message=%s", message_id)
+            logger.exception('Message scan failed | message=%s', message_id)
             with self.db:
                 self.db.execute(
-                    "INSERT OR REPLACE INTO jobs_v3(id,due) VALUES (?,?)",
+                    'INSERT OR REPLACE INTO jobs_v3(id,due) VALUES (?,?)',
                     (message_id, time.time() + 600),
                 )
 
     def finish(self, message_id):
-        self.db.execute("DELETE FROM jobs_v3 WHERE id=?", (message_id,))
+        self.db.execute(
+            'DELETE FROM jobs_v3 WHERE id=?',
+            (message_id,),
+        )
         self.db.commit()
 
     async def flush_logs(self, case_id=None):
-        query = "SELECT sequence,body,stage FROM events_v5 WHERE sent=0"
+        query = 'SELECT sequence,body,stage FROM events_v5 WHERE sent=0'
         params = ()
+
         if case_id:
-            query += " AND case_id=?"
+            query += ' AND case_id=?'
             params = (case_id,)
+
         rows = self.db.execute(
-            query + " ORDER BY sequence LIMIT 100", params
+            query + ' ORDER BY sequence LIMIT 100',
+            params,
         ).fetchall()
+
         legacy = [] if case_id else self.db.execute(
-            "SELECT id,body FROM logs_v3 ORDER BY id LIMIT 100"
+            'SELECT id,body FROM logs_v3 ORDER BY id LIMIT 100'
         ).fetchall()
+
         for sequence, body, stage in rows:
             try:
-                channel = self.get_channel(MOD_LOG_ID) or await self.fetch_channel(MOD_LOG_ID)
+                target_id = MOD_LOG_ID
+                channel = (
+                    self.get_channel(target_id)
+                    or await self.fetch_channel(target_id)
+                )
                 await channel.send(
                     body[:2000],
                     suppress_embeds=True,
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
                 self.db.execute(
-                    "UPDATE events_v5 SET sent=1 WHERE sequence=?", (sequence,)
+                    'UPDATE events_v5 SET sent=1 WHERE sequence=?',
+                    (sequence,),
                 )
                 self.db.commit()
             except Exception:
-                logger.exception("Moderator report retained | sequence=%s", sequence)
+                logger.exception(
+                    'Moderator report retained | sequence=%s',
+                    sequence,
+                )
+
         for message_id, body in legacy:
             try:
-                channel = self.get_channel(MOD_LOG_ID) or await self.fetch_channel(MOD_LOG_ID)
+                channel = (
+                    self.get_channel(MOD_LOG_ID)
+                    or await self.fetch_channel(MOD_LOG_ID)
+                )
                 await channel.send(
                     body[:2000],
                     suppress_embeds=True,
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
-                self.db.execute("DELETE FROM logs_v3 WHERE id=?", (message_id,))
+                self.db.execute(
+                    'DELETE FROM logs_v3 WHERE id=?',
+                    (message_id,),
+                )
                 self.db.commit()
             except Exception:
-                logger.exception("Legacy moderator report retained | message=%s", message_id)
+                logger.exception(
+                    'Legacy moderator report retained | message=%s',
+                    message_id,
+                )
 
     async def discover(self, channel):
         initial = discord.utils.time_snowflake(
             discord.utils.utcnow() - timedelta(hours=24)
         )
-        cursor = int(self.setting("cursor", str(initial)))
+        cursor = int(self.setting('cursor', str(initial)))
+
         async for message in channel.history(
-            limit=None, after=discord.Object(id=cursor), oldest_first=True
+            limit=None,
+            after=discord.Object(id=cursor),
+            oldest_first=True,
         ):
             self.enqueue(message.id)
-            self.set_setting("cursor", message.id)
-        before_id = int(self.setting("audit_before", "0"))
+            self.set_setting('cursor', message.id)
+
+        before_id = int(self.setting('audit_before', '0'))
         count = 0
+
         async for message in channel.history(
             limit=100,
             before=discord.Object(id=before_id) if before_id else None,
             oldest_first=False,
         ):
             self.enqueue(message.id)
-            self.set_setting("audit_before", message.id)
+            self.set_setting('audit_before', message.id)
             count += 1
+
         if count < 100:
-            self.set_setting("audit_before", 0)
+            self.set_setting('audit_before', 0)
 
     @tasks.loop(minutes=SCAN_MINUTES)
     async def scanner(self):
-        logger.info("NSFW scan started | channel=%s", CHANNEL_ID)
+        logger.info('NSFW scan started | channel=%s', CHANNEL_ID)
+
         try:
-            channel = self.get_channel(CHANNEL_ID) or await self.fetch_channel(CHANNEL_ID)
+            channel = (
+                self.get_channel(CHANNEL_ID)
+                or await self.fetch_channel(CHANNEL_ID)
+            )
             permissions = channel.permissions_for(channel.guild.me)
+
             if not (
                 permissions.view_channel
                 and permissions.read_message_history
                 and permissions.manage_messages
             ):
                 raise PermissionError(
-                    "Bot needs View Channel, Read Message History, and Manage Messages "
-                    f"in channel {CHANNEL_ID}"
+                    'Bot needs View Channel, Read Message History, and Manage Messages '
+                    f'in channel {CHANNEL_ID}'
                 )
+
             await self.refresh_adult_feed()
             await self.recover_actions(channel)
+
             try:
                 await self.discover(channel)
             except Exception:
-                logger.exception("NSFW history discovery failed; processing queued messages")
+                logger.exception(
+                    'NSFW history discovery failed; processing queued messages'
+                )
+
             jobs = self.db.execute(
-                "SELECT id FROM jobs_v3 WHERE due<=? ORDER BY id LIMIT 300",
+                'SELECT id FROM jobs_v3 WHERE due<=? ORDER BY id LIMIT 300',
                 (time.time(),),
             ).fetchall()
+
             for (message_id,) in jobs:
                 async with self.message_lock:
                     await self.handle(channel, message_id)
-            logger.info("NSFW scan completed | queued messages processed=%s", len(jobs))
+
+            logger.info(
+                'NSFW scan completed | queued messages processed=%s',
+                len(jobs),
+            )
+
         except Exception:
-            logger.exception("NSFW scan cycle failed")
+            logger.exception('NSFW scan cycle failed')
+
         await self.flush_logs()
 
     @scanner.before_loop
@@ -1905,7 +2076,7 @@ class LiveLinksOnlyGuard:
     def __init__(self, bot):
         self.bot = bot
         self.db = bot.db
-        self.db.executescript("""
+        self.db.executescript('''
             CREATE TABLE IF NOT EXISTS section_jobs_v1 (
                 message_id INTEGER PRIMARY KEY,
                 channel_id INTEGER NOT NULL,
@@ -1935,34 +2106,45 @@ class LiveLinksOnlyGuard:
                 sequence INTEGER PRIMARY KEY,
                 next_part INTEGER NOT NULL DEFAULT 0
             );
-        """)
+        ''')
         self.db.commit()
 
     def enqueue(self, channel_id, message_id, edited=False):
-        if not LIVE_LINKS_ONLY_CHANNEL_ID or channel_id != LIVE_LINKS_ONLY_CHANNEL_ID:
+        if (
+            not LIVE_LINKS_ONLY_CHANNEL_ID
+            or channel_id != LIVE_LINKS_ONLY_CHANNEL_ID
+        ):
             return
+
         self.db.execute(
-            "INSERT OR IGNORE INTO section_jobs_v1(message_id,channel_id) VALUES (?,?)",
+            'INSERT OR IGNORE INTO section_jobs_v1(message_id,channel_id) VALUES (?,?)',
             (message_id, channel_id),
         )
+
         if edited:
             self.db.execute(
-                "UPDATE section_jobs_v1 SET due=0 WHERE message_id=?", (message_id,)
+                'UPDATE section_jobs_v1 SET due=0 WHERE message_id=?',
+                (message_id,),
             )
+
         self.db.commit()
 
     def digest(self, message):
         data = [
-            LIVE_LINKS_POLICY, message.content,
-            [e.url for e in message.embeds], str(message.edited_at),
+            LIVE_LINKS_POLICY,
+            message.content,
+            [e.url for e in message.embeds],
+            str(message.edited_at),
         ]
-        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+        return hashlib.sha256(
+            json.dumps(data, sort_keys=True).encode()
+        ).hexdigest()
 
     def event(self, case_id, stage, report, status):
         body = (
             f"{'BEFORE' if stage == 'before' else 'AFTER / ' + stage.upper()} "
             f"| LIVE LINKS ONLY | Case {case_id}\n"
-            f"Status: {status}\n"
+            f'Status: {status}\n'
             f"Server ID: {report['guild_id']}\n"
             f"Channel ID: {report['channel_id']}\n"
             f"Message ID: {report['message_id']}\n"
@@ -1970,99 +2152,124 @@ class LiveLinksOnlyGuard:
             f"Original message: {report['message_link']}\n"
             f"Posted UTC: {report['posted']}\n"
             f"Detected UTC: {report['detected']}\n"
-            f"Reported UTC: {discord.utils.utcnow().isoformat()}\n"
+            f'Reported UTC: {discord.utils.utcnow().isoformat()}\n'
             f"Reason: {report['reason']}\n"
             f"Fingerprint: {report['digest']}\n"
-            "Discord log contains metadata only; repost text is stored separately."
+            'Discord log contains metadata only; repost text is stored separately.'
         )
+
         self.db.execute(
-            "INSERT OR IGNORE INTO section_events_v1(case_id,stage,body) VALUES (?,?,?)",
+            'INSERT OR IGNORE INTO section_events_v1(case_id,stage,body) VALUES (?,?,?)',
             (case_id, stage, body),
         )
-        if stage == "confirmed":
-            notice = report.get("repost_body") or (
+
+        if stage == 'confirmed':
+            notice = report.get('repost_body') or (
                 f"Removed message {report['message_id']} in <#{report['channel_id']}>. "
                 f"Reason: {report.get('repost_blocked_reason') or 'live-links-only section violation'}. "
                 f"Case {case_id}"
             )
             self.db.execute(
-                "INSERT OR IGNORE INTO section_events_v1(case_id,stage,body) VALUES (?,?,?)",
-                (case_id, "output_confirmed", notice),
+                'INSERT OR IGNORE INTO section_events_v1(case_id,stage,body) VALUES (?,?,?)',
+                (case_id, 'output_confirmed', notice),
             )
 
     def finish(self, message_id):
-        self.db.execute("DELETE FROM section_jobs_v1 WHERE message_id=?", (message_id,))
+        self.db.execute(
+            'DELETE FROM section_jobs_v1 WHERE message_id=?',
+            (message_id,),
+        )
         self.db.commit()
 
     def terminal(self, case_id, message_id, state, report, status):
         with self.db:
             self.db.execute(
-                "UPDATE section_cases_v1 SET state=? WHERE case_id=?", (state, case_id)
+                'UPDATE section_cases_v1 SET state=? WHERE case_id=?',
+                (state, case_id),
             )
             self.event(case_id, state, report, status)
             self.db.execute(
-                "DELETE FROM section_jobs_v1 WHERE message_id=?", (message_id,)
+                'DELETE FROM section_jobs_v1 WHERE message_id=?',
+                (message_id,),
             )
 
     async def flush(self, case_id=None):
-        sql = "SELECT sequence,body,stage FROM section_events_v1 WHERE sent=0"
+        sql = 'SELECT sequence,body,stage FROM section_events_v1 WHERE sent=0'
         args = ()
+
         if case_id:
-            sql += " AND case_id=?"
+            sql += ' AND case_id=?'
             args = (case_id,)
+
         rows = self.db.execute(
-            sql + " ORDER BY sequence LIMIT 100", args
+            sql + ' ORDER BY sequence LIMIT 100',
+            args,
         ).fetchall()
+
         for sequence, body, stage in rows:
             try:
-                target_id = OUTPUT_CHANNEL_ID if stage == "output_confirmed" else MOD_LOG_ID
-                channel = self.bot.get_channel(target_id) or await self.bot.fetch_channel(target_id)
-                if stage == "output_confirmed":
+                target_id = (
+                    OUTPUT_CHANNEL_ID
+                    if stage == 'output_confirmed'
+                    else MOD_LOG_ID
+                )
+                channel = (
+                    self.bot.get_channel(target_id)
+                    or await self.bot.fetch_channel(target_id)
+                )
+
+                if stage == 'output_confirmed':
                     rule = LINK_REPOST_RULES[LIVE_LINKS_ONLY_CHANNEL_ID]
                     member = channel.guild.me or await channel.guild.fetch_member(self.bot.user.id)
                     permissions = channel.permissions_for(member)
-                    if not all(
-                        getattr(permissions, key, False)
-                        for key in rule["output_permissions"]
-                    ):
-                        raise PermissionError(
-                            "Link output channel is missing send/embed permissions"
-                        )
+                    if not all(getattr(permissions, key, False) for key in rule['output_permissions']):
+                        raise PermissionError('Link output channel is missing send/embed permissions')
+
                 progress = self.db.execute(
-                    "SELECT next_part FROM section_delivery_v1 WHERE sequence=?", (sequence,)
+                    'SELECT next_part FROM section_delivery_v1 WHERE sequence=?',
+                    (sequence,),
                 ).fetchone()
+
                 next_part = progress[0] if progress else 0
                 parts = [
                     body[offset:offset + 2000]
                     for offset in range(0, len(body), 2000)
                 ]
+
                 for index in range(next_part, len(parts)):
                     await channel.send(
                         parts[index],
-                        suppress_embeds=(stage != "output_confirmed"),
+                        suppress_embeds=(stage != 'output_confirmed'),
                         allowed_mentions=discord.AllowedMentions.none(),
                     )
                     with self.db:
                         self.db.execute(
-                            "INSERT OR REPLACE INTO section_delivery_v1 VALUES (?,?)",
+                            'INSERT OR REPLACE INTO section_delivery_v1 VALUES (?,?)',
                             (sequence, index + 1),
                         )
+
                 with self.db:
                     self.db.execute(
-                        "UPDATE section_events_v1 SET sent=1 WHERE sequence=?", (sequence,)
+                        'UPDATE section_events_v1 SET sent=1 WHERE sequence=?',
+                        (sequence,),
                     )
                     self.db.execute(
-                        "DELETE FROM section_delivery_v1 WHERE sequence=?", (sequence,)
+                        'DELETE FROM section_delivery_v1 WHERE sequence=?',
+                        (sequence,),
                     )
-                if stage == "output_confirmed":
+
+                if stage == 'output_confirmed':
                     logger.info(
-                        "Live-link output delivered | channel=%s | sequence=%s",
-                        target_id, sequence,
+                        'Live-link output delivered | channel=%s | sequence=%s',
+                        target_id,
+                        sequence,
                     )
+
             except Exception:
                 logger.exception(
-                    "Live-link report/output retained | sequence=%s | stage=%s",
-                    sequence, stage,
+                    'Live-link report/output retained | sequence=%s | stage=%s',
+                    sequence,
+                    stage,
                 )
 
     async def process(self, channel, message_id):
@@ -2071,108 +2278,167 @@ class LiveLinksOnlyGuard:
             "AND channel_id=? AND state IN ('planned','deleting','retry') LIMIT 1",
             (message_id, channel.id),
         ).fetchone()
+
         try:
             message = await channel.fetch_message(message_id)
         except discord.NotFound:
             if active:
                 self.terminal(
-                    active[0], message_id, "missing", json.loads(active[2]),
-                    "Message is absent; who removed it is unconfirmed.",
+                    active[0],
+                    message_id,
+                    'missing',
+                    json.loads(active[2]),
+                    'Message is absent; who removed it is unconfirmed.',
                 )
                 await self.flush(active[0])
             else:
                 self.finish(message_id)
             return
+
         if message.author.id == self.bot.user.id:
             self.finish(message_id)
             return
+
         digest = self.digest(message)
+
         if active and active[1] != digest:
             self.terminal(
-                active[0], message_id, "changed", json.loads(active[2]),
-                "Deletion cancelled because the message or policy changed; fresh scan queued.",
+                active[0],
+                message_id,
+                'changed',
+                json.loads(active[2]),
+                'Deletion cancelled because the message or policy changed; '
+                'fresh scan queued.',
             )
             self.enqueue(channel.id, message_id, edited=True)
             await self.flush(active[0])
             return
+
         if active:
             case_id, old_digest, report_json = active
             report = json.loads(report_json)
+
         else:
             clean = self.db.execute(
-                "SELECT digest FROM section_clean_v1 WHERE message_id=?", (message_id,)
+                'SELECT digest FROM section_clean_v1 WHERE message_id=?',
+                (message_id,),
             ).fetchone()
+
             if clean and clean[0] == digest:
                 self.finish(message_id)
                 return
+
             links = section_link_candidates(message)
             rejected = []
             unresolved = False
+
             for link in links:
                 decision = await section_link_allowed_resolved(link)
                 if decision is False:
                     rejected.append(link)
                 elif decision is None:
                     unresolved = True
+
             if unresolved and not rejected:
                 self.db.execute(
-                    "UPDATE section_jobs_v1 SET due=? WHERE message_id=?",
+                    'UPDATE section_jobs_v1 SET due=? WHERE message_id=?',
                     (time.time() + 600, message_id),
                 )
                 self.db.commit()
-                logger.warning("TikTok share pending resolution | message=%s", message_id)
+                logger.warning(
+                    'TikTok share pending resolution | message=%s',
+                    message_id,
+                )
                 return
+
             if not rejected:
                 with self.db:
                     self.db.execute(
-                        "INSERT OR REPLACE INTO section_clean_v1 VALUES (?,?)",
+                        'INSERT OR REPLACE INTO section_clean_v1 VALUES (?,?)',
                         (message_id, digest),
                     )
                     self.db.execute(
-                        "DELETE FROM section_jobs_v1 WHERE message_id=?", (message_id,)
+                        'DELETE FROM section_jobs_v1 WHERE message_id=?',
+                        (message_id,),
                     )
                 return
+
             case_id = uuid.uuid4().hex[:16]
             blocked_reason = text_violation(
-                self.bot.message_text(message), self.bot.feed_blocked_domain
+                self.bot.message_text(message),
+                self.bot.feed_blocked_domain,
             )
+
             report = {
-                "guild_id": message.guild.id,
-                "channel_id": channel.id,
-                "message_id": message_id,
-                "author_id": message.author.id,
-                "message_link": message.jump_url,
-                "posted": message.created_at.isoformat(),
-                "detected": discord.utils.utcnow().isoformat(),
-                "digest": digest,
-                "reason": f"{len(rejected)} link(s) did not match approved live-link formats.",
-                "repost_body": section_repost_body(message) if not blocked_reason else None,
-                "repost_blocked_reason": blocked_reason,
+                'guild_id': message.guild.id,
+                'channel_id': channel.id,
+                'message_id': message_id,
+                'author_id': message.author.id,
+                'message_link': message.jump_url,
+                'posted': message.created_at.isoformat(),
+                'detected': discord.utils.utcnow().isoformat(),
+                'digest': digest,
+                'reason': (
+                    f'{len(rejected)} link(s) did not match approved live-link formats.'
+                ),
+                'repost_body': (
+                    section_repost_body(message)
+                    if not blocked_reason
+                    else None
+                ),
+                'repost_blocked_reason': blocked_reason,
             }
+
             with self.db:
                 self.db.execute(
-                    "INSERT INTO section_cases_v1 VALUES (?,?,?,?,?,?)",
-                    (case_id, message_id, channel.id, digest, json.dumps(report), "planned"),
+                    'INSERT INTO section_cases_v1 VALUES (?,?,?,?,?,?)',
+                    (
+                        case_id,
+                        message_id,
+                        channel.id,
+                        digest,
+                        json.dumps(report),
+                        'planned',
+                    ),
                 )
-                self.event(case_id, "before", report, "Deletion planned; not yet confirmed.")
+                self.event(
+                    case_id,
+                    'before',
+                    report,
+                    'Deletion planned; not yet confirmed.',
+                )
+
             logger.info(
-                "Live-link violation detected | case=%s | message=%s | links=%s | rejected=%s",
-                case_id, message_id, len(links), len(rejected),
+                'Live-link violation detected | case=%s | message=%s '
+                '| links=%s | rejected=%s',
+                case_id,
+                message_id,
+                len(links),
+                len(rejected),
             )
+
         await self.flush(case_id)
+
         try:
             latest = await channel.fetch_message(message_id)
         except discord.NotFound:
             self.terminal(
-                case_id, message_id, "missing", report,
-                "Message disappeared before deletion; deleter unconfirmed.",
+                case_id,
+                message_id,
+                'missing',
+                report,
+                'Message disappeared before deletion; deleter unconfirmed.',
             )
             await self.flush(case_id)
             return
+
         if self.digest(latest) != digest:
             self.terminal(
-                case_id, message_id, "changed", report,
-                "Deletion cancelled because the message changed; fresh scan queued.",
+                case_id,
+                message_id,
+                'changed',
+                report,
+                'Deletion cancelled because the message changed; fresh scan queued.',
             )
             self.enqueue(channel.id, message_id, edited=True)
             await self.flush(case_id)
@@ -2181,14 +2447,14 @@ class LiveLinksOnlyGuard:
         nsfw_reason, scan_limits = await self.bot.inspect(latest)
 
         if nsfw_reason:
-            report["repost_body"] = None
-            report["repost_blocked_reason"] = nsfw_reason
+            report['repost_body'] = None
+            report['repost_blocked_reason'] = nsfw_reason
             self.terminal(
-                case_id, message_id, "blocked_nsfw", report,
-                "Repost blocked by NSFW moderation: " + nsfw_reason,
+                case_id, message_id, 'blocked_nsfw', report,
+                'Repost blocked by NSFW moderation: ' + nsfw_reason,
             )
             nsfw_case = self.bot.start_action(
-                latest, self.bot.fingerprint(latest), nsfw_reason
+                latest, self.bot.fingerprint(latest), nsfw_reason,
             )
             await self.bot.execute_action(channel, nsfw_case)
             await self.flush(case_id)
@@ -2197,142 +2463,198 @@ class LiveLinksOnlyGuard:
         if scan_limits:
             with self.db:
                 self.db.execute(
-                    "UPDATE section_jobs_v1 SET due=? WHERE message_id=?",
+                    'UPDATE section_jobs_v1 SET due=? WHERE message_id=?',
                     (time.time() + 600, message_id),
                 )
                 self.event(
-                    case_id, "scan_pending", report,
-                    "Repost withheld because media inspection is incomplete: "
-                    + "; ".join(sorted(set(scan_limits))),
+                    case_id, 'scan_pending', report,
+                    'Repost withheld because media inspection is incomplete: '
+                    + '; '.join(sorted(set(scan_limits))),
                 )
             await self.flush(case_id)
             return
 
         if any(
-            label.startswith("Possible direct statement")
+            label.startswith('Possible direct statement')
             for phrase, label in troll_comment_findings(latest.content)
         ):
             self.bot.troll_flagger.enqueue(channel.id, message_id)
             with self.db:
                 self.db.execute(
-                    "UPDATE section_jobs_v1 SET due=? WHERE message_id=?",
+                    'UPDATE section_jobs_v1 SET due=? WHERE message_id=?',
                     (time.time() + 600, message_id),
                 )
                 self.event(
-                    case_id, "hate_pending", report,
-                    "Repost withheld: direct hate-text match queued for moderation.",
+                    case_id, 'hate_pending', report,
+                    'Repost withheld: direct hate-text match queued for moderation.',
                 )
             await self.flush(case_id)
             return
 
-        report["repost_body"] = section_repost_body(latest)
-        report["repost_blocked_reason"] = None
+        report['repost_body'] = (
+            section_repost_body(latest)
+            if not nsfw_reason
+            else None
+        )
+        report['repost_blocked_reason'] = nsfw_reason
+
+        if nsfw_reason and hasattr(self.bot, 'schedule_violation_timeout'):
+            self.bot.schedule_violation_timeout(
+                'nsfw-section-' + case_id,
+                latest,
+                'NSFW violation: ' + nsfw_reason,
+            )
 
         with self.db:
             self.db.execute(
                 "UPDATE section_cases_v1 SET state='deleting',report=? WHERE case_id=?",
                 (json.dumps(report), case_id),
             )
+
         try:
             await latest.delete()
+
         except discord.NotFound:
             self.terminal(
-                case_id, message_id, "missing", report,
-                "Message disappeared during deletion; deleter unconfirmed.",
+                case_id,
+                message_id,
+                'missing',
+                report,
+                'Message disappeared during deletion; deleter unconfirmed.',
             )
+
         except Exception as exc:
             logger.exception(
-                "Live-link deletion failed | case=%s | message=%s", case_id, message_id
+                'Live-link deletion failed | case=%s | message=%s',
+                case_id,
+                message_id,
             )
             with self.db:
                 self.db.execute(
-                    "UPDATE section_cases_v1 SET state='retry' WHERE case_id=?", (case_id,)
+                    "UPDATE section_cases_v1 SET state='retry' WHERE case_id=?",
+                    (case_id,),
                 )
                 self.event(
-                    case_id, "failed", report,
-                    f"Deletion not confirmed: {type(exc).__name__}: {exc}; retry scheduled.",
+                    case_id,
+                    'failed',
+                    report,
+                    f'Deletion not confirmed: {type(exc).__name__}: {exc}; '
+                    'retry scheduled.',
                 )
                 self.db.execute(
-                    "UPDATE section_jobs_v1 SET due=? WHERE message_id=?",
+                    'UPDATE section_jobs_v1 SET due=? WHERE message_id=?',
                     (time.time() + 600, message_id),
                 )
+
         else:
             self.terminal(
-                case_id, message_id, "confirmed", report,
-                "Discord acknowledged deletion by this bot.",
+                case_id,
+                message_id,
+                'confirmed',
+                report,
+                'Discord acknowledged deletion by this bot.',
             )
             logger.info(
-                "Live-link message deleted | case=%s | message=%s", case_id, message_id
+                'Live-link message deleted | case=%s | message=%s',
+                case_id,
+                message_id,
             )
+
         await self.flush(case_id)
 
     async def discover(self, channel):
-        prefix = "live_section_" + str(channel.id) + "_"
+        prefix = 'live_section_' + str(channel.id) + '_'
         initial = discord.utils.time_snowflake(
             discord.utils.utcnow() - timedelta(hours=24)
         )
-        cursor = int(self.bot.setting(prefix + "cursor", str(initial)))
+        cursor = int(self.bot.setting(prefix + 'cursor', str(initial)))
+
         async for message in channel.history(
-            limit=None, after=discord.Object(id=cursor), oldest_first=True
+            limit=None,
+            after=discord.Object(id=cursor),
+            oldest_first=True,
         ):
             self.enqueue(channel.id, message.id)
-            self.bot.set_setting(prefix + "cursor", message.id)
-        before_id = int(self.bot.setting(prefix + "audit", "0"))
+            self.bot.set_setting(prefix + 'cursor', message.id)
+
+        before_id = int(self.bot.setting(prefix + 'audit', '0'))
         count = 0
+
         async for message in channel.history(
             limit=100,
             before=discord.Object(id=before_id) if before_id else None,
             oldest_first=False,
         ):
             self.enqueue(channel.id, message.id)
-            self.bot.set_setting(prefix + "audit", message.id)
+            self.bot.set_setting(prefix + 'audit', message.id)
             count += 1
+
         if count < 100:
-            self.bot.set_setting(prefix + "audit", 0)
+            self.bot.set_setting(prefix + 'audit', 0)
 
     @tasks.loop(minutes=LIVE_LINKS_SCAN_MINUTES)
     async def loop(self):
         if not LIVE_LINKS_ONLY_CHANNEL_ID:
             return
-        logger.info("Live-link scan started | channel=%s", LIVE_LINKS_ONLY_CHANNEL_ID)
+
+        logger.info(
+            'Live-link scan started | channel=%s',
+            LIVE_LINKS_ONLY_CHANNEL_ID,
+        )
+
         try:
             channel = (
                 self.bot.get_channel(LIVE_LINKS_ONLY_CHANNEL_ID)
                 or await self.bot.fetch_channel(LIVE_LINKS_ONLY_CHANNEL_ID)
             )
             permissions = channel.permissions_for(channel.guild.me)
+
             if not (
                 permissions.view_channel
                 and permissions.read_message_history
                 and permissions.manage_messages
             ):
                 raise PermissionError(
-                    "Live-link section needs View Channel, Read Message History, "
-                    f"and Manage Messages in channel {channel.id}"
+                    'Live-link section needs View Channel, Read Message History, '
+                    f'and Manage Messages in channel {channel.id}'
                 )
+
             try:
                 await self.discover(channel)
             except Exception:
-                logger.exception("Live-link discovery failed; using queued messages")
+                logger.exception(
+                    'Live-link discovery failed; using queued messages'
+                )
+
             rows = self.db.execute(
-                "SELECT message_id FROM section_jobs_v1 "
-                "WHERE channel_id=? AND due<=? ORDER BY message_id LIMIT 300",
+                'SELECT message_id FROM section_jobs_v1 '
+                'WHERE channel_id=? AND due<=? ORDER BY message_id LIMIT 300',
                 (channel.id, time.time()),
             ).fetchall()
+
             for (message_id,) in rows:
                 try:
                     async with self.bot.message_lock:
                         await self.process(channel, message_id)
                 except Exception:
-                    logger.exception("Live-link processing failed | message=%s", message_id)
+                    logger.exception(
+                        'Live-link processing failed | message=%s',
+                        message_id,
+                    )
                     self.db.execute(
-                        "UPDATE section_jobs_v1 SET due=? WHERE message_id=?",
+                        'UPDATE section_jobs_v1 SET due=? WHERE message_id=?',
                         (time.time() + 600, message_id),
                     )
                     self.db.commit()
-            logger.info("Live-link scan completed | queued messages processed=%s", len(rows))
+
+            logger.info(
+                'Live-link scan completed | queued messages processed=%s',
+                len(rows),
+            )
+
         except Exception:
-            logger.exception("Live-link section scan failed")
+            logger.exception('Live-link section scan failed')
+
         await self.flush()
 
     @loop.before_loop
@@ -2345,55 +2667,72 @@ class CauseAwareLiveLinksOnlyGuard(LiveLinksOnlyGuard):
     def digest(self, message):
         original = super().digest(message)
         policy = (
-            f"{CAUSE_EXCEPTION_POLICY}:"
-            f"{CAUSE_EXCEPTION_USERNAME}:"
-            f"{CAUSE_EXCEPTION_USER_ID}"
+            f'{CAUSE_EXCEPTION_POLICY}:'
+            f'{CAUSE_EXCEPTION_USERNAME}:'
+            f'{CAUSE_EXCEPTION_USER_ID}'
         )
-        return hashlib.sha256(f"{original}:{policy}".encode()).hexdigest()
+        return hashlib.sha256(
+            f'{original}:{policy}'.encode()
+        ).hexdigest()
 
     async def process(self, channel, message_id):
         try:
             message = await channel.fetch_message(message_id)
         except discord.NotFound:
             return await super().process(channel, message_id)
+
         qualifies = (
             channel.id == LIVE_LINKS_ONLY_CHANNEL_ID
             and is_cause_announcement(message)
         )
+
         if qualifies and text_violation(
-            self.bot.message_text(message), self.bot.feed_blocked_domain
+            self.bot.message_text(message),
+            self.bot.feed_blocked_domain,
         ):
             qualifies = False
+
         if not qualifies:
             return await super().process(channel, message_id)
+
         active_cases = self.db.execute(
             "SELECT case_id,report FROM section_cases_v1 "
             "WHERE message_id=? AND channel_id=? "
             "AND state IN ('planned','deleting','retry')",
             (message_id, channel.id),
         ).fetchall()
+
         for case_id, report_json in active_cases:
             report = json.loads(report_json)
-            report.pop("repost_body", None)
+            report.pop('repost_body', None)
             self.terminal(
-                case_id, message_id, "exempt", report,
-                "Link-rule deletion cancelled: designated account posted "
-                "a qualifying cause announcement. NSFW moderation remains active.",
+                case_id,
+                message_id,
+                'exempt',
+                report,
+                'Link-rule deletion cancelled: designated account posted '
+                'a qualifying cause announcement. NSFW moderation remains active.',
             )
+
         with self.db:
             self.db.execute(
-                "INSERT OR REPLACE INTO section_clean_v1 VALUES (?,?)",
+                'INSERT OR REPLACE INTO section_clean_v1 VALUES (?,?)',
                 (message_id, self.digest(message)),
             )
             self.db.execute(
-                "DELETE FROM section_jobs_v1 WHERE message_id=?", (message_id,)
+                'DELETE FROM section_jobs_v1 WHERE message_id=?',
+                (message_id,),
             )
+
         if channel.id == CHANNEL_ID:
             self.bot.enqueue(message_id)
+
         logger.info(
-            "Cause announcement allowed | author_id=%s | message=%s",
-            message.author.id, message_id,
+            'Cause announcement allowed | author_id=%s | message=%s',
+            message.author.id,
+            message_id,
         )
+
         if active_cases:
             await self.flush()
 
@@ -2411,22 +2750,29 @@ class LiveSectionModerator(Moderator):
     async def on_message(self, message):
         await super().on_message(message)
         if message.author.id != self.user.id:
-            self.live_link_guard.enqueue(message.channel.id, message.id)
+            self.live_link_guard.enqueue(
+                message.channel.id,
+                message.id,
+            )
 
     async def on_raw_message_edit(self, payload):
         await super().on_raw_message_edit(payload)
         self.live_link_guard.enqueue(
-            payload.channel_id, payload.message_id, edited=True
+            payload.channel_id,
+            payload.message_id,
+            edited=True,
         )
 
     async def close(self):
         task = self.live_link_guard.loop.get_task()
         self.live_link_guard.loop.cancel()
+
         if task and task is not asyncio.current_task():
             try:
                 await task
             except asyncio.CancelledError:
                 pass
+
         await super().close()
 
 
@@ -2434,7 +2780,8 @@ class TrollFlagger:
     def __init__(self, bot):
         self.bot = bot
         self.db = bot.db
-        self.db.executescript("""
+
+        self.db.executescript('''
             CREATE TABLE IF NOT EXISTS troll_jobs_v1 (
                 message_id INTEGER PRIMARY KEY,
                 channel_id INTEGER NOT NULL
@@ -2448,6 +2795,8 @@ class TrollFlagger:
                 body TEXT NOT NULL,
                 sent INTEGER NOT NULL DEFAULT 0
             );
+        ''')
+        self.db.executescript('''
             CREATE TABLE IF NOT EXISTS hate_deletions_v1 (
                 case_id TEXT PRIMARY KEY,
                 message_id INTEGER NOT NULL,
@@ -2462,105 +2811,95 @@ class TrollFlagger:
                 sent INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(case_id,part)
             );
-        """)
+        ''')
         self.db.commit()
 
     def enqueue(self, channel_id, message_id):
         if channel_id in self.bot.moderation_channel_ids():
             with self.db:
                 self.db.execute(
-                    "INSERT OR IGNORE INTO troll_jobs_v1 VALUES (?,?)",
+                    'INSERT OR IGNORE INTO troll_jobs_v1 VALUES (?,?)',
                     (message_id, channel_id),
                 )
 
     def deletion_log(self, case_id, part, body):
         self.db.execute(
-            "INSERT OR IGNORE INTO hate_deletion_logs_v1 "
-            "(case_id,part,body) VALUES (?,?,?)",
+            'INSERT OR IGNORE INTO hate_deletion_logs_v1 '
+            '(case_id,part,body) VALUES (?,?,?)',
             (case_id, part, body),
         )
 
     async def flush_deletion_logs(self, case_id):
-        channel = (
-            self.bot.get_channel(MOD_LOG_ID)
-            or await self.bot.fetch_channel(MOD_LOG_ID)
-        )
+        channel = (self.bot.get_channel(MOD_LOG_ID)
+                   or await self.bot.fetch_channel(MOD_LOG_ID))
         rows = self.db.execute(
-            "SELECT part,body FROM hate_deletion_logs_v1 "
-            "WHERE case_id=? AND sent=0 ORDER BY part",
-            (case_id,),
+            'SELECT part,body FROM hate_deletion_logs_v1 '
+            'WHERE case_id=? AND sent=0 ORDER BY part', (case_id,),
         ).fetchall()
         for part, body in rows:
-            await channel.send(
-                body,
-                suppress_embeds=True,
-                allowed_mentions=discord.AllowedMentions.none(),
-            )
+            await channel.send(body, suppress_embeds=True,
+                               allowed_mentions=discord.AllowedMentions.none())
             with self.db:
                 self.db.execute(
-                    "UPDATE hate_deletion_logs_v1 SET sent=1 WHERE case_id=? AND part=?",
-                    (case_id, part),
+                    'UPDATE hate_deletion_logs_v1 SET sent=1 '
+                    'WHERE case_id=? AND part=?', (case_id, part),
                 )
 
     async def process_deletion(self, channel, row):
         case_id, message_id, original, state = row
         await self.flush_deletion_logs(case_id)
-        if state != "pending":
+        if state != 'pending':
             return
         try:
             latest = await channel.fetch_message(message_id)
         except discord.NotFound:
-            result = "Message already absent; bot deletion cannot be confirmed."
-            final_state = "absent"
+            result = 'Message already absent; bot deletion cannot be confirmed.'
+            final_state = 'absent'
         else:
             findings = troll_comment_findings(latest.content)
             if latest.content != original or not any(
-                label.startswith("Possible direct statement")
+                label.startswith('Possible direct statement')
                 for phrase, label in findings
             ):
-                result = "Deletion cancelled: message changed; queued for rescan."
-                final_state = "changed"
+                result = 'Deletion cancelled: message changed; queued for rescan.'
+                final_state = 'changed'
                 with self.db:
-                    self.db.execute(
-                        "DELETE FROM troll_seen_v1 WHERE message_id=?", (message_id,)
-                    )
+                    self.db.execute('DELETE FROM troll_seen_v1 WHERE message_id=?',
+                                    (message_id,))
                 self.enqueue(channel.id, message_id)
             else:
                 try:
                     await latest.delete()
                 except discord.NotFound:
-                    result = "Message disappeared during deletion; outcome unconfirmed."
-                    final_state = "absent"
+                    result = 'Message disappeared during deletion; outcome unconfirmed.'
+                    final_state = 'absent'
                 except Exception as exc:
                     with self.db:
                         self.deletion_log(
-                            case_id, "failed-" + uuid.uuid4().hex,
-                            f"AFTER / FAILED | HATE TEXT | Case {case_id}\n"
-                            f"Message ID: {message_id}\n"
-                            f"{type(exc).__name__}: {exc}\nRetry next scan.",
+                            case_id, 'failed-' + uuid.uuid4().hex,
+                            f'AFTER / FAILED | HATE TEXT | Case {case_id}\n'
+                            f'Message ID: {message_id}\n'
+                            f'{type(exc).__name__}: {exc}\nRetry next scan.',
                         )
                     await self.flush_deletion_logs(case_id)
                     return
                 else:
-                    result = "Discord confirmed message deletion."
-                    final_state = "deleted"
+                    result = 'Discord confirmed message deletion.'
+                    final_state = 'deleted'
         with self.db:
-            self.db.execute(
-                "UPDATE hate_deletions_v1 SET state=? WHERE case_id=?",
-                (final_state, case_id),
-            )
+            self.db.execute('UPDATE hate_deletions_v1 SET state=? WHERE case_id=?',
+                            (final_state, case_id))
             self.deletion_log(
-                case_id, "z-after",
-                f"AFTER | HATE TEXT | Case {case_id}\n"
-                f"Message ID: {message_id}\n{result}",
+                case_id, 'z-after',
+                f'AFTER | HATE TEXT | Case {case_id}\n'
+                f'Message ID: {message_id}\n{result}',
             )
         await self.flush_deletion_logs(case_id)
 
     async def check(self, channel, message_id):
         pending = self.db.execute(
-            "SELECT case_id,message_id,content,state FROM hate_deletions_v1 "
-            "WHERE message_id=? AND state='pending'",
-            (message_id,),
+            'SELECT case_id,message_id,content,state FROM hate_deletions_v1 '
+            "WHERE message_id=? AND state='pending'", (message_id,),
         ).fetchall()
         for row in pending:
             await self.process_deletion(channel, row)
@@ -2571,101 +2910,110 @@ class TrollFlagger:
         except discord.NotFound:
             with self.db:
                 self.db.execute(
-                    "DELETE FROM troll_jobs_v1 WHERE message_id=?", (message_id,)
+                    'DELETE FROM troll_jobs_v1 WHERE message_id=?',
+                    (message_id,),
                 )
             return
+
         findings = (
             []
             if message.author.id == self.bot.user.id
             else troll_comment_findings(message.content)
         )
+
         digest = hashlib.sha256(
-            (TROLL_FLAG_POLICY + ":" + (message.content or "")).encode()
+            (TROLL_FLAG_POLICY + ':' + (message.content or '')).encode()
         ).hexdigest()
+
         previous = self.db.execute(
-            "SELECT digest FROM troll_seen_v1 WHERE message_id=?", (message_id,)
+            'SELECT digest FROM troll_seen_v1 WHERE message_id=?',
+            (message_id,),
         ).fetchone()
+
         with self.db:
             if findings and (not previous or previous[0] != digest):
                 case_id = uuid.uuid4().hex[:16]
-                details = "\n".join(
-                    f"{label}: {phrase}" for phrase, label in findings
+                details = '\n'.join(
+                    f'{label}: {phrase}' for phrase, label in findings
                 )
-                excerpt = (message.content or "")[:900]
+                excerpt = (message.content or '')[:900]
+
                 body = (
-                    f"TROLL COMMENT REVIEW | Case {case_id}\n"
-                    f"Author ID: {message.author.id}\n"
-                    f"Channel: <#{channel.id}>\n"
-                    f"Message ID: {message_id}\n"
-                    f"Original: {message.jump_url}\n"
-                    f"Posted UTC: {message.created_at.isoformat()}\n"
-                    f"Flagged UTC: {discord.utils.utcnow().isoformat()}\n"
-                    f"{details[:600]}\nMessage excerpt:\n{excerpt}\n"
-                    "Intent is unconfirmed. Ambiguous matches are review-only. "
-                    "Direct matches queue a 24-hour timeout; see timeout reports."
+                    f'TROLL COMMENT REVIEW | Case {case_id}\n'
+                    f'Author ID: {message.author.id}\n'
+                    f'Channel: <#{channel.id}>\n'
+                    f'Message ID: {message_id}\n'
+                    f'Original: {message.jump_url}\n'
+                    f'Posted UTC: {message.created_at.isoformat()}\n'
+                    f'Flagged UTC: {discord.utils.utcnow().isoformat()}\n'
+                    f'{details[:600]}\nMessage excerpt:\n{excerpt}\n'
+                    'Intent is unconfirmed. Ambiguous matches are review-only. '
+                    'Direct matches queue a 24-hour timeout; see timeout reports.'
                 )
+
                 self.db.execute(
-                    "INSERT INTO troll_outbox_v1(case_id,body) VALUES (?,?)",
+                    'INSERT INTO troll_outbox_v1(case_id,body) VALUES (?,?)',
                     (case_id, body[:2000]),
                 )
+
                 if any(
-                    label.startswith("Possible direct statement")
+                    label.startswith('Possible direct statement')
                     for phrase, label in findings
                 ):
                     self.db.execute(
-                        "INSERT INTO hate_deletions_v1 "
-                        "(case_id,message_id,channel_id,content) VALUES (?,?,?,?)",
-                        (case_id, message_id, channel.id, message.content or ""),
+                        'INSERT INTO hate_deletions_v1 '
+                        '(case_id,message_id,channel_id,content) VALUES (?,?,?,?)',
+                        (case_id, message_id, channel.id, message.content or ''),
                     )
                     self.deletion_log(
-                        case_id, "a-before",
-                        f"BEFORE | HATE TEXT | Case {case_id}\n"
-                        f"Author ID: {message.author.id}\n"
-                        f"Channel ID: {channel.id}\nMessage ID: {message_id}\n"
-                        f"Posted UTC: {message.created_at.isoformat()}\n"
-                        "Original message text follows in numbered parts. "
-                        "Attachments are not copied.",
+                        case_id, 'a-before',
+                        f'BEFORE | HATE TEXT | Case {case_id}\n'
+                        f'Author ID: {message.author.id}\n'
+                        f'Channel ID: {channel.id}\nMessage ID: {message_id}\n'
+                        f'Posted UTC: {message.created_at.isoformat()}\n'
+                        'Original message text follows in numbered parts. '
+                        'Attachments are not copied.',
                     )
-                    content = message.content or ""
-                    parts = [
-                        content[i:i + 500] for i in range(0, len(content), 500)
-                    ] or [""]
+                    content = message.content or ''
+                    parts = [content[i:i + 500] for i in range(0, len(content), 500)] or ['']
                     for index, part in enumerate(parts):
                         self.deletion_log(
-                            case_id, f"b-text-{index:05d}",
-                            f"BEFORE TEXT | Case {case_id} | "
-                            f"Part {index + 1}/{len(parts)}\n" + part,
+                            case_id, f'b-text-{index:05d}',
+                            f'BEFORE TEXT | Case {case_id} | '
+                            f'Part {index + 1}/{len(parts)}\n' + part,
                         )
                     self.bot.schedule_violation_timeout(
-                        "hate-" + case_id, message, "Direct hate-text pattern violation"
+                        'hate-' + case_id,
+                        message,
+                        'Direct hate-text pattern violation',
                     )
+
             self.db.execute(
-                "INSERT OR REPLACE INTO troll_seen_v1 VALUES (?,?)", (message_id, digest)
+                'INSERT OR REPLACE INTO troll_seen_v1 VALUES (?,?)',
+                (message_id, digest),
             )
             self.db.execute(
-                "DELETE FROM troll_jobs_v1 WHERE message_id=?", (message_id,)
+                'DELETE FROM troll_jobs_v1 WHERE message_id=?',
+                (message_id,),
             )
 
     async def flush(self):
         cases = self.db.execute(
-            "SELECT case_id,message_id,channel_id,content,state "
+            'SELECT case_id,message_id,channel_id,content,state '
             "FROM hate_deletions_v1 WHERE state='pending' OR case_id IN "
-            "(SELECT case_id FROM hate_deletion_logs_v1 WHERE sent=0) LIMIT 300"
+            '(SELECT case_id FROM hate_deletion_logs_v1 WHERE sent=0) LIMIT 300'
         ).fetchall()
         for case_id, message_id, channel_id, content, state in cases:
             try:
-                channel = (
-                    self.bot.get_channel(channel_id)
-                    or await self.bot.fetch_channel(channel_id)
-                )
-                await self.process_deletion(
-                    channel, (case_id, message_id, content, state)
-                )
+                channel = (self.bot.get_channel(channel_id)
+                           or await self.bot.fetch_channel(channel_id))
+                await self.process_deletion(channel, (case_id, message_id, content, state))
             except Exception:
-                logger.exception("Hate deletion retained for retry | case=%s", case_id)
+                logger.exception('Hate deletion retained for retry | case=%s', case_id)
         rows = self.db.execute(
-            "SELECT case_id,body FROM troll_outbox_v1 WHERE sent=0 LIMIT 100"
+            'SELECT case_id,body FROM troll_outbox_v1 WHERE sent=0 LIMIT 100'
         ).fetchall()
+
         for case_id, body in rows:
             try:
                 channel = (
@@ -2679,10 +3027,14 @@ class TrollFlagger:
                 )
                 with self.db:
                     self.db.execute(
-                        "UPDATE troll_outbox_v1 SET sent=1 WHERE case_id=?", (case_id,)
+                        'UPDATE troll_outbox_v1 SET sent=1 WHERE case_id=?',
+                        (case_id,),
                     )
             except Exception:
-                logger.exception("Troll review log retained | case=%s", case_id)
+                logger.exception(
+                    'Troll review log retained | case=%s',
+                    case_id,
+                )
 
     @tasks.loop(minutes=SCAN_MINUTES)
     async def loop(self):
@@ -2692,11 +3044,12 @@ class TrollFlagger:
                     self.bot.get_channel(channel_id)
                     or await self.bot.fetch_channel(channel_id)
                 )
-                key = f"troll_cursor_{channel_id}"
+                key = f'troll_cursor_{channel_id}'
                 initial = discord.utils.time_snowflake(
                     discord.utils.utcnow() - timedelta(hours=24)
                 )
                 cursor = int(self.bot.setting(key, str(initial)))
+
                 async for message in channel.history(
                     limit=1000,
                     after=discord.Object(id=cursor),
@@ -2704,20 +3057,34 @@ class TrollFlagger:
                 ):
                     self.enqueue(channel_id, message.id)
                     self.bot.set_setting(key, message.id)
-                async for message in channel.history(limit=100, oldest_first=False):
+
+                async for message in channel.history(
+                    limit=100,
+                    oldest_first=False,
+                ):
                     self.enqueue(channel_id, message.id)
+
                 rows = self.db.execute(
-                    "SELECT message_id FROM troll_jobs_v1 WHERE channel_id=? "
-                    "ORDER BY message_id LIMIT 300",
+                    'SELECT message_id FROM troll_jobs_v1 WHERE channel_id=? '
+                    'ORDER BY message_id LIMIT 300',
                     (channel_id,),
                 ).fetchall()
+
                 for (message_id,) in rows:
                     try:
                         await self.check(channel, message_id)
                     except Exception:
-                        logger.exception("Troll comment check failed | message=%s", message_id)
+                        logger.exception(
+                            'Troll comment check failed | message=%s',
+                            message_id,
+                        )
+
             except Exception:
-                logger.exception("Troll comment channel scan failed | channel=%s", channel_id)
+                logger.exception(
+                    'Troll comment channel scan failed | channel=%s',
+                    channel_id,
+                )
+
         await self.flush()
 
     @loop.before_loop
@@ -2726,11 +3093,14 @@ class TrollFlagger:
         await asyncio.sleep(SCAN_MINUTES * 60)
 
 
+RELATED_COMMENT_WINDOW_SECONDS = 120
+
+
 class ReliableTrollFlagger(TrollFlagger):
     def __init__(self, bot):
         super().__init__(bot)
         self.flush_lock = asyncio.Lock()
-        self.db.executescript("""
+        self.db.executescript('''
             CREATE TABLE IF NOT EXISTS hate_context_jobs_v2 (
                 parent_case TEXT PRIMARY KEY,
                 message_id INTEGER NOT NULL,
@@ -2744,14 +3114,14 @@ class ReliableTrollFlagger(TrollFlagger):
                 parent_case TEXT NOT NULL,
                 author_id INTEGER NOT NULL
             );
-        """)
+        ''')
         self.db.commit()
 
     async def safe_flush_logs(self, case_id):
         try:
             await self.flush_deletion_logs(case_id)
         except Exception:
-            logger.exception("Deletion log delivery pending | case=%s", case_id)
+            logger.exception('Deletion log delivery pending | case=%s', case_id)
 
     async def check(self, channel, message_id):
         try:
@@ -2760,93 +3130,80 @@ class ReliableTrollFlagger(TrollFlagger):
             return await super().check(channel, message_id)
         await super().check(channel, message_id)
         direct = any(
-            label.startswith("Possible direct statement")
+            label.startswith('Possible direct statement')
             for phrase, label in troll_comment_findings(original.content)
         )
         if not direct or original.author.id == self.bot.user.id:
             return
         row = self.db.execute(
-            "SELECT case_id FROM hate_deletions_v1 WHERE message_id=? "
-            "ORDER BY rowid DESC LIMIT 1",
-            (message_id,),
+            'SELECT case_id FROM hate_deletions_v1 WHERE message_id=? '
+            'ORDER BY rowid DESC LIMIT 1', (message_id,),
         ).fetchone()
         if row:
             with self.db:
                 self.db.execute(
-                    "INSERT OR IGNORE INTO hate_context_jobs_v2 "
-                    "(parent_case,message_id,channel_id,author_id,posted_at) "
-                    "VALUES (?,?,?,?,?)",
-                    (
-                        row[0], message_id, channel.id, original.author.id,
-                        original.created_at.timestamp(),
-                    ),
+                    'INSERT OR IGNORE INTO hate_context_jobs_v2 '
+                    '(parent_case,message_id,channel_id,author_id,posted_at) '
+                    'VALUES (?,?,?,?,?)',
+                    (row[0], message_id, channel.id, original.author.id,
+                     original.created_at.timestamp()),
                 )
 
     async def capture_related(self, job):
         parent, anchor_id, channel_id, author_id, posted_at = job
-        channel = (
-            self.bot.get_channel(channel_id)
-            or await self.bot.fetch_channel(channel_id)
-        )
+        channel = (self.bot.get_channel(channel_id)
+                   or await self.bot.fetch_channel(channel_id))
         start = datetime.fromtimestamp(
-            posted_at - RELATED_COMMENT_WINDOW_SECONDS, timezone.utc
-        )
+            posted_at - RELATED_COMMENT_WINDOW_SECONDS, timezone.utc)
         end = datetime.fromtimestamp(
-            posted_at + RELATED_COMMENT_WINDOW_SECONDS, timezone.utc
-        )
+            posted_at + RELATED_COMMENT_WINDOW_SECONDS, timezone.utc)
         count = 0
         async for message in channel.history(
-            limit=None,
-            after=start - timedelta(milliseconds=1),
-            before=end + timedelta(milliseconds=1),
-            oldest_first=True,
+            limit=None, after=start - timedelta(milliseconds=1),
+            before=end + timedelta(milliseconds=1), oldest_first=True,
         ):
-            if (
-                message.author.id != author_id
-                or message.id == anchor_id
-                or not start <= message.created_at <= end
-            ):
+            if (message.author.id != author_id or message.id == anchor_id
+                    or not start <= message.created_at <= end):
                 continue
             existing = self.db.execute(
-                "SELECT 1 FROM hate_deletions_v1 WHERE message_id=?", (message.id,)
+                'SELECT 1 FROM hate_deletions_v1 WHERE message_id=?',
+                (message.id,),
             ).fetchone()
             if existing:
                 continue
-            case_id = f"context-{parent}-{message.id}"
+            case_id = f'context-{parent}-{message.id}'
             with self.db:
                 self.db.execute(
-                    "INSERT OR IGNORE INTO hate_deletions_v1 "
-                    "(case_id,message_id,channel_id,content) VALUES (?,?,?,?)",
-                    (case_id, message.id, channel_id, message.content or ""),
+                    'INSERT OR IGNORE INTO hate_deletions_v1 '
+                    '(case_id,message_id,channel_id,content) VALUES (?,?,?,?)',
+                    (case_id, message.id, channel_id, message.content or ''),
                 )
                 self.db.execute(
-                    "INSERT OR IGNORE INTO hate_context_targets_v2 VALUES (?,?,?)",
+                    'INSERT OR IGNORE INTO hate_context_targets_v2 VALUES (?,?,?)',
                     (case_id, parent, author_id),
                 )
                 self.deletion_log(
-                    case_id, "a-before",
-                    f"BEFORE | RELATED USER COMMENT | Case {case_id}\n"
-                    f"Parent flagged case: {parent}\n"
-                    f"Server ID: {message.guild.id}\n"
-                    f"Channel ID: {channel_id}\nAuthor ID: {author_id}\n"
-                    f"Message ID: {message.id}\n"
-                    f"Posted UTC: {message.created_at.isoformat()}\n"
-                    f"Flagged message ID: {anchor_id}\n"
-                    f"Window: {start.isoformat()} through {end.isoformat()}\n"
-                    "Reason: same user and channel within the configured time window. "
-                    "This message was not independently classified as hate text.\n"
-                    f"Attachment IDs: {[a.id for a in message.attachments]}\n"
-                    "Media is not copied. Full message text follows.",
+                    case_id, 'a-before',
+                    f'BEFORE | RELATED USER COMMENT | Case {case_id}\n'
+                    f'Parent flagged case: {parent}\n'
+                    f'Server ID: {message.guild.id}\n'
+                    f'Channel ID: {channel_id}\nAuthor ID: {author_id}\n'
+                    f'Message ID: {message.id}\n'
+                    f'Posted UTC: {message.created_at.isoformat()}\n'
+                    f'Flagged message ID: {anchor_id}\n'
+                    f'Window: {start.isoformat()} through {end.isoformat()}\n'
+                    'Reason: same user and channel within the configured time window. '
+                    'This message was not independently classified as hate text.\n'
+                    f'Attachment IDs: {[a.id for a in message.attachments]}\n'
+                    'Media is not copied. Full message text follows.',
                 )
-                content = message.content or "[No message text]"
-                parts = [
-                    content[i:i + 500] for i in range(0, len(content), 500)
-                ]
+                content = message.content or '[No message text]'
+                parts = [content[i:i + 500] for i in range(0, len(content), 500)]
                 for index, part in enumerate(parts):
                     self.deletion_log(
-                        case_id, f"b-text-{index:05d}",
-                        f"BEFORE TEXT | Case {case_id} | "
-                        f"Part {index + 1}/{len(parts)}\n{part}",
+                        case_id, f'b-text-{index:05d}',
+                        f'BEFORE TEXT | Case {case_id} | '
+                        f'Part {index + 1}/{len(parts)}\n{part}',
                     )
             count += 1
         if time.time() >= end.timestamp():
@@ -2856,16 +3213,16 @@ class ReliableTrollFlagger(TrollFlagger):
                     (parent,),
                 )
                 total = self.db.execute(
-                    "SELECT count(*) FROM hate_context_targets_v2 WHERE parent_case=?",
+                    'SELECT count(*) FROM hate_context_targets_v2 WHERE parent_case=?',
                     (parent,),
                 ).fetchone()[0]
                 self.deletion_log(
-                    parent, "zz-window-complete",
-                    f"RELATED COMMENT SEARCH COMPLETE | Case {parent}\n"
-                    f"Author ID: {author_id}\nChannel ID: {channel_id}\n"
-                    f"Window: {start.isoformat()} through {end.isoformat()}\n"
-                    f"Related messages queued: {total}. "
-                    "Each message has its own deletion outcome report.",
+                    parent, 'zz-window-complete',
+                    f'RELATED COMMENT SEARCH COMPLETE | Case {parent}\n'
+                    f'Author ID: {author_id}\nChannel ID: {channel_id}\n'
+                    f'Window: {start.isoformat()} through {end.isoformat()}\n'
+                    f'Related messages queued: {total}. '
+                    'Each message has its own deletion outcome report.',
                 )
         return count
 
@@ -2873,17 +3230,17 @@ class ReliableTrollFlagger(TrollFlagger):
         async with self.bot.message_lock:
             case_id = row[0]
             current = self.db.execute(
-                "SELECT case_id,message_id,content,state FROM hate_deletions_v1 "
-                "WHERE case_id=?", (case_id,),
+                'SELECT case_id,message_id,content,state FROM hate_deletions_v1 '
+                'WHERE case_id=?', (case_id,),
             ).fetchone()
             if not current:
                 return
             case_id, message_id, original, state = current
             await self.safe_flush_logs(case_id)
-            if state != "pending":
+            if state != 'pending':
                 return
             related = self.db.execute(
-                "SELECT parent_case,author_id FROM hate_context_targets_v2 WHERE case_id=?",
+                'SELECT parent_case,author_id FROM hate_context_targets_v2 WHERE case_id=?',
                 (case_id,),
             ).fetchone()
             try:
@@ -2892,68 +3249,65 @@ class ReliableTrollFlagger(TrollFlagger):
                     eligible = latest.author.id == related[1]
                 else:
                     eligible = any(
-                        label.startswith("Possible direct statement")
+                        label.startswith('Possible direct statement')
                         for phrase, label in troll_comment_findings(latest.content)
                     )
                 if not eligible or latest.content != original:
-                    final_state = "changed"
-                    status = (
-                        "Deletion cancelled: content or eligibility changed; queued for rescan."
-                    )
+                    final_state = 'changed'
+                    status = 'Deletion cancelled: content or eligibility changed; queued for rescan.'
                     with self.db:
                         self.db.execute(
-                            "DELETE FROM troll_seen_v1 WHERE message_id=?", (message_id,)
-                        )
+                            'DELETE FROM troll_seen_v1 WHERE message_id=?', (message_id,))
                     self.enqueue(channel.id, message_id)
                 else:
                     await latest.delete()
-                    final_state = "deleted"
-                    status = "Discord acknowledged successful deletion by this bot."
+                    final_state = 'deleted'
+                    status = 'Discord acknowledged successful deletion by this bot.'
             except discord.NotFound:
-                final_state = "absent"
-                status = "Message already absent; who deleted it cannot be confirmed."
+                final_state = 'absent'
+                status = 'Message already absent; who deleted it cannot be confirmed.'
             except Exception as exc:
-                logger.exception("Comment deletion failed | case=%s", case_id)
+                logger.exception('Comment deletion failed | case=%s', case_id)
                 with self.db:
                     self.deletion_log(
-                        case_id, "failure-" + uuid.uuid4().hex,
-                        f"AFTER / FAILED | COMMENT REMOVAL | Case {case_id}\n"
-                        f"Channel ID: {channel.id}\nMessage ID: {message_id}\n"
-                        f"{type(exc).__name__}: {str(exc)[:350]}\n"
-                        "Deletion remains queued; retry in the next worker cycle. "
-                        "If Forbidden, check Manage Messages in this channel.",
+                        case_id, 'failure-' + uuid.uuid4().hex,
+                        f'AFTER / FAILED | COMMENT REMOVAL | Case {case_id}\n'
+                        f'Channel ID: {channel.id}\nMessage ID: {message_id}\n'
+                        f'{type(exc).__name__}: {str(exc)[:350]}\n'
+                        'Deletion remains queued; retry in the next worker cycle. '
+                        'If Forbidden, check Manage Messages in this channel.',
                     )
                 await self.safe_flush_logs(case_id)
                 return
             with self.db:
                 self.db.execute(
-                    "UPDATE hate_deletions_v1 SET state=? WHERE case_id=?",
+                    'UPDATE hate_deletions_v1 SET state=? WHERE case_id=?',
                     (final_state, case_id),
                 )
                 self.deletion_log(
-                    case_id, "z-after",
-                    f"AFTER / {final_state.upper()} | COMMENT REMOVAL | Case {case_id}\n"
-                    f"Channel ID: {channel.id}\nMessage ID: {message_id}\n"
-                    f"Reported UTC: {discord.utils.utcnow().isoformat()}\n{status}",
+                    case_id, 'z-after',
+                    f'AFTER / {final_state.upper()} | COMMENT REMOVAL | Case {case_id}\n'
+                    f'Channel ID: {channel.id}\nMessage ID: {message_id}\n'
+                    f'Reported UTC: {discord.utils.utcnow().isoformat()}\n{status}',
                 )
             await self.safe_flush_logs(case_id)
 
     async def flush(self):
         async with self.flush_lock:
             jobs = self.db.execute(
-                "SELECT parent_case,message_id,channel_id,author_id,posted_at "
-                "FROM hate_context_jobs_v2 WHERE state='pending' LIMIT 100"
+                'SELECT parent_case,message_id,channel_id,author_id,posted_at '
+                "FROM hate_context_jobs_v2 WHERE state='pending' LIMIT 100",
             ).fetchall()
             for job in jobs:
                 try:
                     await self.capture_related(job)
                 except Exception as exc:
-                    logger.exception("Related comment discovery retained | case=%s", job[0])
+                    logger.exception('Related comment discovery retained | case=%s', job[0])
                     with self.db:
                         self.deletion_log(
-                            job[0], "context-failed-" + uuid.uuid4().hex,
-                            f"RELATED COMMENT SEARCH FAILED | Case {job[0]}\n"
-                            f"{type(exc).__name__}: {str(exc)[:350]}\nRetry scheduled.",
+                            job[0], 'context-failed-' + uuid.uuid4().hex,
+                            f'RELATED COMMENT SEARCH FAILED | Case {job[0]}\n'
+                            f'{type(exc).__name__}: {str(exc)[:350]}\nRetry scheduled.',
                         )
             await super().flush()
 
@@ -2962,11 +3316,12 @@ class ReliableTrollFlagger(TrollFlagger):
         try:
             await self.flush()
         except Exception:
-            logger.exception("Comment deletion worker failed; retry next cycle")
+            logger.exception('Comment deletion worker failed; retry next cycle')
 
     @deletion_worker.before_loop
     async def before_deletion_worker(self):
         await self.bot.wait_until_ready()
+
 
 
 class TrollAwareModerator(LiveSectionModerator):
@@ -2982,11 +3337,17 @@ class TrollAwareModerator(LiveSectionModerator):
     async def on_message(self, message):
         await super().on_message(message)
         if message.author.id != self.user.id:
-            self.troll_flagger.enqueue(message.channel.id, message.id)
+            self.troll_flagger.enqueue(
+                message.channel.id,
+                message.id,
+            )
 
     async def on_raw_message_edit(self, payload):
         await super().on_raw_message_edit(payload)
-        self.troll_flagger.enqueue(payload.channel_id, payload.message_id)
+        self.troll_flagger.enqueue(
+            payload.channel_id,
+            payload.message_id,
+        )
 
     async def close(self):
         deletion_task = self.troll_flagger.deletion_worker.get_task()
@@ -2998,11 +3359,13 @@ class TrollAwareModerator(LiveSectionModerator):
                 pass
         task = self.troll_flagger.loop.get_task()
         self.troll_flagger.loop.cancel()
+
         if task and task is not asyncio.current_task():
             try:
                 await task
             except asyncio.CancelledError:
                 pass
+
         await super().close()
 
 
@@ -3010,7 +3373,8 @@ class ViolationTimeouts:
     def __init__(self, bot):
         self.bot = bot
         self.db = bot.db
-        self.db.executescript("""
+
+        self.db.executescript('''
             CREATE TABLE IF NOT EXISTS violation_timeouts_v1 (
                 case_key TEXT PRIMARY KEY,
                 guild_id INTEGER NOT NULL,
@@ -3028,125 +3392,205 @@ class ViolationTimeouts:
                 sent INTEGER NOT NULL DEFAULT 0,
                 UNIQUE(case_key, stage)
             );
-        """)
+        ''')
         self.db.commit()
 
-    def report(self, key, stage, guild_id, member_id, message_id, reason, until_at, status):
+    def report(
+        self,
+        key,
+        stage,
+        guild_id,
+        member_id,
+        message_id,
+        reason,
+        until_at,
+        status,
+    ):
         body = (
-            f"TIMEOUT / {stage.upper()} | Case {key}\n"
-            f"Server ID: {guild_id}\n"
-            f"User ID: {member_id}\n"
-            f"Message ID: {message_id}\n"
-            f"Reason: {reason}\n"
-            f"Scheduled expiry: <t:{int(until_at)}:F>\n"
-            f"Reported UTC: {discord.utils.utcnow().isoformat()}\n"
-            f"Status: {status}"
+            f'TIMEOUT / {stage.upper()} | Case {key}\n'
+            f'Server ID: {guild_id}\n'
+            f'User ID: {member_id}\n'
+            f'Message ID: {message_id}\n'
+            f'Reason: {reason}\n'
+            f'Scheduled expiry: <t:{int(until_at)}:F>\n'
+            f'Reported UTC: {discord.utils.utcnow().isoformat()}\n'
+            f'Status: {status}'
         )
+
         self.db.execute(
-            "INSERT OR IGNORE INTO timeout_reports_v1 "
-            "(case_key,stage,body) VALUES (?,?,?)",
+            'INSERT OR IGNORE INTO timeout_reports_v1 '
+            '(case_key,stage,body) VALUES (?,?,?)',
             (key, stage, body[:2000]),
         )
 
     def enqueue(self, key, guild_id, member_id, message_id, reason):
         until_at = time.time() + VIOLATION_TIMEOUT_SECONDS
+
         inserted = self.db.execute(
-            "INSERT OR IGNORE INTO violation_timeouts_v1 "
-            "(case_key,guild_id,member_id,message_id,reason,until_at) VALUES (?,?,?,?,?,?)",
+            'INSERT OR IGNORE INTO violation_timeouts_v1 '
+            '(case_key,guild_id,member_id,message_id,reason,until_at) '
+            'VALUES (?,?,?,?,?,?)',
             (key, guild_id, member_id, message_id, reason, until_at),
         ).rowcount
+
         if inserted:
             self.report(
-                key, "queued", guild_id, member_id, message_id, reason, until_at,
-                "24-hour timeout queued. Not yet applied.",
+                key,
+                'queued',
+                guild_id,
+                member_id,
+                message_id,
+                reason,
+                until_at,
+                '24-hour timeout queued. Not yet applied.',
             )
 
     async def apply(self, row):
-        key, guild_id, member_id, message_id, reason, until_at, state = row
+        (
+            key,
+            guild_id,
+            member_id,
+            message_id,
+            reason,
+            until_at,
+            state,
+        ) = row
 
         def finish(stage, status):
             with self.db:
                 self.db.execute(
-                    "UPDATE violation_timeouts_v1 SET state=? WHERE case_key=?",
+                    'UPDATE violation_timeouts_v1 SET state=? WHERE case_key=?',
                     (stage, key),
                 )
                 self.report(
-                    key, stage, guild_id, member_id, message_id, reason, until_at, status
+                    key,
+                    stage,
+                    guild_id,
+                    member_id,
+                    message_id,
+                    reason,
+                    until_at,
+                    status,
                 )
 
-        if state == "attempting":
+        if state == 'attempting':
             finish(
-                "uncertain",
-                "Previous attempt was interrupted. Administrator review required; "
-                "not automatically reapplying a timeout an administrator may have removed.",
+                'uncertain',
+                'Previous attempt was interrupted. Administrator review required; '
+                'not automatically reapplying a timeout an administrator '
+                'may have removed.',
             )
             return
+
         if until_at <= time.time():
-            finish("expired", "Queued timeout expired before application; no action taken.")
+            finish(
+                'expired',
+                'Queued timeout expired before application; no action taken.',
+            )
             return
+
         try:
             guild = self.bot.get_guild(guild_id)
+
             if guild is None:
-                finish("failed", "Bot is not connected to the original server.")
+                finish(
+                    'failed',
+                    'Bot is not connected to the original server.',
+                )
                 return
+
             member = await guild.fetch_member(member_id)
             me = guild.me or await guild.fetch_member(self.bot.user.id)
-            if member.id == guild.owner_id or member.guild_permissions.administrator:
+
+            if (
+                member.id == guild.owner_id
+                or member.guild_permissions.administrator
+            ):
                 finish(
-                    "skipped",
-                    "Discord does not allow timing out the server owner or administrators.",
+                    'skipped',
+                    'Discord does not allow timing out the server owner '
+                    'or administrators.',
                 )
                 return
+
             if member.bot:
-                finish("skipped", "Bot accounts are not timed out.")
+                finish('skipped', 'Bot accounts are not timed out.')
                 return
+
             if not me.guild_permissions.moderate_members:
-                finish("failed", "Bot is missing Moderate Members permission.")
+                finish(
+                    'failed',
+                    'Bot is missing Moderate Members permission.',
+                )
                 return
+
             if member.top_role >= me.top_role:
-                finish("failed", "Member role is equal to or higher than the bot role.")
+                finish(
+                    'failed',
+                    'Member role is equal to or higher than the bot role.',
+                )
                 return
+
             existing = member.timed_out_until
+
             if existing and existing.timestamp() >= until_at - 1:
                 finish(
-                    "already_active",
-                    "An equal or longer timeout is already active; not shortened or extended.",
+                    'already_active',
+                    'An equal or longer timeout is already active; '
+                    'not shortened or extended.',
                 )
                 return
+
             with self.db:
                 self.db.execute(
-                    "UPDATE violation_timeouts_v1 SET state='attempting' WHERE case_key=?",
+                    "UPDATE violation_timeouts_v1 SET state='attempting' "
+                    "WHERE case_key=?",
                     (key,),
                 )
                 self.report(
-                    key, "attempt", guild_id, member_id, message_id, reason, until_at,
-                    "Requesting timeout from Discord.",
+                    key,
+                    'attempt',
+                    guild_id,
+                    member_id,
+                    message_id,
+                    reason,
+                    until_at,
+                    'Requesting timeout from Discord.',
                 )
+
             await self.flush()
+
             await member.timeout(
                 datetime.fromtimestamp(until_at, timezone.utc),
-                reason=f"{reason} | Case {key}"[:512],
+                reason=f'{reason} | Case {key}'[:512],
             )
+
             finish(
-                "applied",
-                "Discord acknowledged the timeout. Administrators can remove it early. "
-                "This case will not reapply a confirmed timeout.",
+                'applied',
+                'Discord acknowledged the timeout. Administrators can remove '
+                'it early. This case will not reapply a confirmed timeout.',
             )
+
         except discord.NotFound:
-            finish("skipped", "Member no longer exists in this server.")
-        except Exception as exc:
-            logger.exception("Timeout attempt failed | case=%s", key)
             finish(
-                "failed",
-                f"{type(exc).__name__}: {exc}. "
-                "Administrator review required; no automatic retry.",
+                'skipped',
+                'Member no longer exists in this server.',
+            )
+
+        except Exception as exc:
+            logger.exception('Timeout attempt failed | case=%s', key)
+            finish(
+                'failed',
+                f'{type(exc).__name__}: {exc}. '
+                'Administrator review required; no automatic retry.',
             )
 
     async def flush(self):
         rows = self.db.execute(
-            "SELECT report_id,body FROM timeout_reports_v1 WHERE sent=0 "
-            "ORDER BY report_id LIMIT 100"
+            'SELECT report_id,body FROM timeout_reports_v1 WHERE sent=0 '
+            'ORDER BY report_id LIMIT 100'
         ).fetchall()
+
         for report_id, body in rows:
             try:
                 channel = (
@@ -3160,24 +3604,33 @@ class ViolationTimeouts:
                 )
                 with self.db:
                     self.db.execute(
-                        "UPDATE timeout_reports_v1 SET sent=1 WHERE report_id=?", (report_id,)
+                        'UPDATE timeout_reports_v1 SET sent=1 WHERE report_id=?',
+                        (report_id,),
                     )
             except Exception:
-                logger.exception("Timeout log retained | report=%s", report_id)
+                logger.exception(
+                    'Timeout log retained | report=%s',
+                    report_id,
+                )
 
     @tasks.loop(seconds=30)
     async def loop(self):
         try:
             rows = self.db.execute(
-                "SELECT case_key,guild_id,member_id,message_id,reason,until_at,state "
-                "FROM violation_timeouts_v1 WHERE state IN ('pending','attempting') "
-                "ORDER BY until_at LIMIT 50"
+                'SELECT case_key,guild_id,member_id,message_id,'
+                'reason,until_at,state '
+                'FROM violation_timeouts_v1 '
+                "WHERE state IN ('pending','attempting') "
+                'ORDER BY until_at LIMIT 50'
             ).fetchall()
+
             for row in rows:
                 await self.apply(row)
+
             await self.flush()
+
         except Exception:
-            logger.exception("Timeout processing cycle failed")
+            logger.exception('Timeout processing cycle failed')
 
     @loop.before_loop
     async def before_loop(self):
@@ -3188,24 +3641,40 @@ class TimeoutModerator(TrollAwareModerator):
     def __init__(self):
         super().__init__()
         self.violation_timeouts = ViolationTimeouts(self)
+
         self.timeout_enabled_at = float(
-            self.setting("timeout_enabled_at_v1", str(TIMEOUT_ENABLED_AT))
+            self.setting(
+                'timeout_enabled_at_v1',
+                str(TIMEOUT_ENABLED_AT),
+            )
         )
-        self.set_setting("timeout_enabled_at_v1", self.timeout_enabled_at)
+        self.set_setting(
+            'timeout_enabled_at_v1',
+            self.timeout_enabled_at,
+        )
 
     def schedule_violation_timeout(self, key, message, reason):
         if message.created_at.timestamp() < self.timeout_enabled_at:
             return
+
         with self.db:
             self.violation_timeouts.enqueue(
-                key, message.guild.id, message.author.id, message.id, reason
+                key,
+                message.guild.id,
+                message.author.id,
+                message.id,
+                reason,
             )
 
     def start_action(self, message, digest, reason):
         case_id = super().start_action(message, digest, reason)
+
         self.schedule_violation_timeout(
-            "nsfw-" + case_id, message, "NSFW violation: " + reason
+            'nsfw-' + case_id,
+            message,
+            'NSFW violation: ' + reason,
         )
+
         return case_id
 
     async def setup_hook(self):
@@ -3215,11 +3684,13 @@ class TimeoutModerator(TrollAwareModerator):
     async def close(self):
         task = self.violation_timeouts.loop.get_task()
         self.violation_timeouts.loop.cancel()
+
         if task and task is not asyncio.current_task():
             try:
                 await task
             except asyncio.CancelledError:
                 pass
+
         await super().close()
 
 
@@ -3227,13 +3698,13 @@ class ChannelListModerator(TimeoutModerator):
     def __init__(self):
         super().__init__()
         if len(LINK_REPOST_RULES) != 1:
-            raise ValueError("Configure exactly one special link-repost source channel.")
-        self.db.execute("""
+            raise ValueError('Configure exactly one special link-repost source channel.')
+        self.db.execute('''
             CREATE TABLE IF NOT EXISTS nsfw_job_channels_v1 (
                 message_id INTEGER PRIMARY KEY,
                 channel_id INTEGER NOT NULL
             )
-        """)
+        ''')
         self.db.commit()
 
     def moderation_channel_ids(self):
@@ -3244,9 +3715,7 @@ class ChannelListModerator(TimeoutModerator):
             if channel_id:
                 continue
             matches = [
-                channel
-                for guild in self.guilds
-                for channel in guild.text_channels
+                channel for guild in self.guilds for channel in guild.text_channels
                 if channel.name.casefold() == name.casefold()
                 and (scope_guild is None or guild.id == scope_guild)
             ]
@@ -3263,12 +3732,12 @@ class ChannelListModerator(TimeoutModerator):
     def enqueue(self, message_id, edited=False, channel_id=None):
         if channel_id is not None:
             self.db.execute(
-                "INSERT OR REPLACE INTO nsfw_job_channels_v1 VALUES (?,?)",
+                'INSERT OR REPLACE INTO nsfw_job_channels_v1 VALUES (?,?)',
                 (message_id, channel_id),
             )
         else:
             self.db.execute(
-                "INSERT OR IGNORE INTO nsfw_job_channels_v1 VALUES (?,?)",
+                'INSERT OR IGNORE INTO nsfw_job_channels_v1 VALUES (?,?)',
                 (message_id, CHANNEL_ID),
             )
         super().enqueue(message_id, edited=edited)
@@ -3277,99 +3746,81 @@ class ChannelListModerator(TimeoutModerator):
         await super().on_ready()
         selected = self.moderation_channel_ids()
         descriptions = [
-            f"{channel_id}: {getattr(self.get_channel(channel_id), 'name', 'unresolved')}"
+            f'{channel_id}: {getattr(self.get_channel(channel_id), "name", "unresolved")}'
             for channel_id in sorted(selected)
         ]
         body = (
-            "MODERATION CHANNEL CONFIGURATION\n"
-            "NSFW and hate-text moderation enabled for:\n"
-            + "\n".join(descriptions)
-            + f"\nNSFW/hate logs: {MOD_LOG_ID}"
-            + f"\nSpecial link-repost source ONLY: {LIVE_LINKS_ONLY_CHANNEL_ID}"
-            + f"\nOrdinary non-live link destination: {OUTPUT_CHANNEL_ID}"
+            'MODERATION CHANNEL CONFIGURATION\n'
+            'NSFW and hate-text moderation enabled for:\n'
+            + '\n'.join(descriptions)
+            + f'\nNSFW/hate logs: {MOD_LOG_ID}'
+            + f'\nSpecial link-repost source ONLY: {LIVE_LINKS_ONLY_CHANNEL_ID}'
+            + f'\nOrdinary non-live link destination: {OUTPUT_CHANNEL_ID}'
         )
-        if not MODERATION_CHANNELS.get("testy") and not any(
-            getattr(self.get_channel(channel_id), "name", "").casefold() == "testy"
+        if 'testy' in MODERATION_CHANNELS and not MODERATION_CHANNELS.get('testy') and not any(
+            getattr(self.get_channel(channel_id), 'name', '').casefold() == 'testy'
             for channel_id in selected
         ):
             body += (
-                "\nWARNING: testy could not be resolved uniquely. Set TESTY_CHANNEL_ID "
-                "to its numeric channel ID. It is not monitored until resolved."
+                '\nWARNING: testy could not be resolved uniquely. Set TESTY_CHANNEL_ID '
+                'to its numeric channel ID. It is not monitored until resolved.'
             )
         with self.db:
-            self.record_event(uuid.uuid4().hex[:16], "configuration", body)
-        logger.info("%s", body)
+            self.record_event(uuid.uuid4().hex[:16], 'configuration', body)
+        logger.info('%s', body)
         await self.flush_logs()
 
     async def on_message(self, message):
         await super().on_message(message)
-        if (
-            message.channel.id in self.moderation_channel_ids()
-            and message.author.id != self.user.id
-        ):
+        if message.channel.id in self.moderation_channel_ids() and message.author.id != self.user.id:
             self.enqueue(message.id, channel_id=message.channel.id)
             self.troll_flagger.enqueue(message.channel.id, message.id)
 
     async def on_raw_message_edit(self, payload):
         await super().on_raw_message_edit(payload)
         if payload.channel_id in self.moderation_channel_ids():
-            self.enqueue(
-                payload.message_id,
-                edited=True,
-                channel_id=payload.channel_id,
-            )
+            self.enqueue(payload.message_id, edited=True, channel_id=payload.channel_id)
             self.troll_flagger.enqueue(payload.channel_id, payload.message_id)
 
     async def on_raw_message_delete(self, payload):
         if payload.channel_id in self.moderation_channel_ids():
             with self.db:
-                self.db.execute(
-                    "DELETE FROM jobs_v3 WHERE id=?", (payload.message_id,)
-                )
+                self.db.execute('DELETE FROM jobs_v3 WHERE id=?', (payload.message_id,))
 
     async def discover(self, channel):
-        prefix = f"nsfw_channel_{channel.id}_"
+        prefix = f'nsfw_channel_{channel.id}_'
         initial = discord.utils.time_snowflake(
-            discord.utils.utcnow() - timedelta(hours=24)
-        )
-        cursor = int(self.setting(prefix + "cursor", str(initial)))
+            discord.utils.utcnow() - timedelta(hours=24))
+        cursor = int(self.setting(prefix + 'cursor', str(initial)))
         async for message in channel.history(
-            limit=None,
-            after=discord.Object(id=cursor),
-            oldest_first=True,
+            limit=None, after=discord.Object(id=cursor), oldest_first=True,
         ):
             self.enqueue(message.id, channel_id=channel.id)
-            self.set_setting(prefix + "cursor", message.id)
-        before_id = int(self.setting(prefix + "audit", "0"))
+            self.set_setting(prefix + 'cursor', message.id)
+        before_id = int(self.setting(prefix + 'audit', '0'))
         count = 0
         async for message in channel.history(
-            limit=100,
-            before=discord.Object(id=before_id) if before_id else None,
+            limit=100, before=discord.Object(id=before_id) if before_id else None,
             oldest_first=False,
         ):
             self.enqueue(message.id, channel_id=channel.id)
-            self.set_setting(prefix + "audit", message.id)
+            self.set_setting(prefix + 'audit', message.id)
             count += 1
         if count < 100:
-            self.set_setting(prefix + "audit", 0)
+            self.set_setting(prefix + 'audit', 0)
 
     async def recover_actions(self, channel):
         rows = self.db.execute(
-            "SELECT case_id,report FROM actions_v5 "
-            "WHERE state IN ('planned','deleting','retry') ORDER BY updated"
+            "SELECT case_id,report FROM actions_v5 WHERE state IN ('planned','deleting','retry') "
+            'ORDER BY updated',
         ).fetchall()
-        matching = [
-            row for row in rows
-            if json.loads(row[1])["channel_id"] == channel.id
-        ]
+        matching = [row for row in rows if json.loads(row[1])['channel_id'] == channel.id]
         for case_id, report in matching[:100]:
             try:
                 async with self.message_lock:
                     await self.execute_action(channel, case_id)
             except Exception:
-                logger.exception(
-                    "NSFW recovery failed | channel=%s | case=%s", channel.id, case_id
-                )
+                logger.exception('NSFW recovery failed | channel=%s | case=%s', channel.id, case_id)
 
     @tasks.loop(minutes=SCAN_MINUTES)
     async def scanner(self):
@@ -3379,39 +3830,31 @@ class ChannelListModerator(TimeoutModerator):
                 channel = self.get_channel(channel_id) or await self.fetch_channel(channel_id)
                 member = channel.guild.me or await channel.guild.fetch_member(self.user.id)
                 permissions = channel.permissions_for(member)
-                if not all(
-                    getattr(permissions, key, False)
-                    for key in (
-                        "view_channel",
-                        "read_message_history",
-                        "manage_messages",
-                    )
-                ):
-                    raise PermissionError(
-                        f"Missing NSFW moderation permissions in {channel_id}"
-                    )
+                if not all(getattr(permissions, key, False) for key in (
+                    'view_channel', 'read_message_history', 'manage_messages',
+                )):
+                    raise PermissionError(f'Missing NSFW moderation permissions in {channel_id}')
                 await self.recover_actions(channel)
                 try:
                     await self.discover(channel)
                 except Exception:
-                    logger.exception("Channel discovery failed | channel=%s", channel_id)
+                    logger.exception('Channel discovery failed | channel=%s', channel_id)
                 jobs = self.db.execute(
-                    "SELECT j.id FROM jobs_v3 j LEFT JOIN nsfw_job_channels_v1 c "
-                    "ON c.message_id=j.id WHERE j.due<=? AND COALESCE(c.channel_id,?)=? "
-                    "ORDER BY j.id LIMIT 300",
+                    'SELECT j.id FROM jobs_v3 j LEFT JOIN nsfw_job_channels_v1 c '
+                    'ON c.message_id=j.id WHERE j.due<=? AND COALESCE(c.channel_id,?)=? '
+                    'ORDER BY j.id LIMIT 300',
                     (time.time(), CHANNEL_ID, channel_id),
                 ).fetchall()
                 for (message_id,) in jobs:
                     async with self.message_lock:
                         await self.handle(channel, message_id)
             except Exception as exc:
-                logger.exception("Channel NSFW scan failed | channel=%s", channel_id)
+                logger.exception('Channel NSFW scan failed | channel=%s', channel_id)
                 with self.db:
                     self.record_event(
-                        uuid.uuid4().hex[:16],
-                        "channel_error",
-                        f"NSFW CHANNEL SCAN FAILED\nChannel ID: {channel_id}\n"
-                        f"{type(exc).__name__}: {str(exc)[:500]}",
+                        uuid.uuid4().hex[:16], 'channel_error',
+                        f'NSFW CHANNEL SCAN FAILED\nChannel ID: {channel_id}\n'
+                        f'{type(exc).__name__}: {str(exc)[:500]}',
                     )
         await self.flush_logs()
 
@@ -3421,8 +3864,8 @@ class ChannelListModerator(TimeoutModerator):
         await asyncio.sleep(SCAN_MINUTES * 60)
 
 
-if __name__ == "__main__":
-    token = os.getenv("DISCORD_TOKEN", "").strip()
+if __name__ == '__main__':
+    token = os.getenv('DISCORD_TOKEN', '').strip()
     if not token:
-        raise SystemExit("Set DISCORD_TOKEN in your hosting environment.")
+        raise SystemExit('Set DISCORD_TOKEN in your hosting environment.')
     ChannelListModerator().run(token, log_handler=None)
